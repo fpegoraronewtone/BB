@@ -1,0 +1,4 @@
+BB
+==
+
+BlackBeard Core Plugin
