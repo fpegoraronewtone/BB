@@ -310,14 +310,26 @@ class BB {
 	 * 
 	 */
 	public static function extend() {
-		$args = func_get_args();
-
+		
+		// pass given arguments searching for "false" items who're not
+		// compatible with WHILE cycle of this method
+		// "false" params will reset arguments list to a single false item!!!
+		$args = array();
+		foreach (func_get_args() as $arg) {
+			if ($arg === false && count($args)) {
+				$args = array(false);
+			} else {
+				$args[] = $arg;
+			}
+		}
+		
 		$a = current($args);
 		while (($b = next($args)) !== false) {
-
+			
 			// skip empty extension objects
-			if (empty($b))
+			if (empty($b)) {
 				continue;
+			}
 
 			// scalar values overrides array and array overrides scalar values!
 			if (!is_array($a) || !is_array($b)) {
@@ -335,7 +347,7 @@ class BB {
 							$a = array_values(array_diff($a, array($atmp)));
 							continue;
 						}
-						// prevent values duplication
+					// prevent values duplication
 					} elseif (!in_array($tmp, $a)) {
 						$a[] = $tmp;
 					}
@@ -360,17 +372,19 @@ class BB {
 				}
 				unset($b['$__overrides__$']);
 			}
+			
+			
 
 			// deep extends key by key
 			foreach (array_keys($b) as $key) {
-
+				
 				// reset key in $a
 				if (substr($key, 0, 3) == '$__') {
 					$akey = substr($key, 3);
 					$a[$akey] = $b[$key];
 					continue;
 				}
-
+				
 				// append strings or sum integers
 				if (substr($key, 0, 3) == '$++') {
 					$akey = substr($key, 3);
@@ -381,15 +395,15 @@ class BB {
 					}
 					continue;
 				}
-
+				
 				// remove key from $a array
-				if ($b[$key] == '$__remove__$') {
+				if ($b[$key] === '$__remove__$') {
 					unset($a[$key]);
 					continue;
 				}
-
+				
 				// add non existing keys
-				if (!array_key_exists($key, $a) || empty($a[$key])) {
+				if (!array_key_exists($key, $a) || empty($a[$key]) || $b[$key] === false) {
 					$a[$key] = $b[$key];
 
 				// recursive extends keys
@@ -399,6 +413,58 @@ class BB {
 			}
 		}
 		return $a;
+	}
+	
+	
+	public static function set($origin = array(), $defaults = array(), $options = array()) {
+		
+		// compose data driver array from mishellaneous type of formats
+		if (!is_array($options)) {
+			$options = array('string' => $options);
+		} else {
+			$keys = array_keys($options);
+			if (is_numeric(array_pop($keys))) {
+				$options['else'] = array_pop($options);
+			}
+		}
+		
+		if (!is_array($origin)) {
+			$otype = gettype($origin);
+			foreach(array_keys($options) as $type) {
+				if ($type == $otype) {
+					$tmp = array();
+					$tmp[$options[$type]] = $origin;
+					$origin = $tmp;
+				}
+			}
+		}
+		
+		if (!is_array($origin) && !empty($options['else'])) {
+			$tmp = array();
+			$tmp[$options['else']] = $origin;
+			$origin = $tmp;
+		}
+		
+		return BB::extend($defaults, $origin);
+		
+	}
+	
+	public static function setAttr($origin = array(), $defaults = array()) {
+		
+		$defaults = BB::extend(array(
+			'id' => '',
+			'class' => '',
+			'style' => ''
+		), $defaults);
+		
+		if (is_array($origin)) {
+			return self::set($origin, $defaults);
+		} elseif (strpos($origin, ':') !== false) {
+			return self::set($origin, $defaults, 'style');
+		} else {
+			return self::set($origin, $defaults, 'class');
+		}
+		
 	}
 
 }

@@ -117,6 +117,35 @@ class BBExtendTest extends CakeTestCase {
 	}
 	
 	
+	/**
+	 * extend with a "true/false" (boolean) value!
+	 */
+	public function testExtend04() {
+		$a = array(
+			'a' => 'a'
+		);
+		$b = array(
+			'b' => true
+		);
+		$this->assertEqual(BB::extend($a, $b), array(
+			'a' => 'a',
+			'b' => true
+		));
+		
+		$c = array(
+			'a' => false,
+			'b' => false
+		);
+		$this->assertEqual(BB::extend($a, $b, $c), array(
+			'a' => false,
+			'b' => false
+		));
+		
+		$this->assertTrue(BB::extend(false, true));
+		$this->assertFalse(BB::extend(true, false));
+	}
+	
+	
 	
 }
 
