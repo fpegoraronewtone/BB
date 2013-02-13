@@ -1,16 +1,41 @@
 <?php
-
+/**
+ * BB Test Case
+ * tests simple methods of BB Library
+ */
 
 App::uses('bb', 'BB.Utility');
 
 class BBTest extends CakeTestCase {
 	
 	
-	
-	public function setUp() {
-		parent::setUp();
+	public function testIsTrue() {
+		$this->assertTrue(BB::isTrue(true));
+		$this->assertTrue(BB::isTrue(1));
+		$this->assertTrue(BB::isTrue('a'));
+		$this->assertTrue(BB::isTrue(0.00001));
+		
+		$this->assertFalse(BB::isTrue(0));
+		$this->assertFalse(BB::isTrue(-1));
+		$this->assertFalse(BB::isTrue(false));
+		$this->assertFalse(BB::isTrue(null));
+		$this->assertFalse(BB::isTrue(''));
+		$this->assertFalse(BB::isTrue(""));
 	}
 	
+	public function testIsFalse() {
+		$this->assertTrue(BB::isFalse());
+		$this->assertTrue(BB::isFalse(0));
+		$this->assertTrue(BB::isFalse(''));
+		$this->assertTrue(BB::isFalse(""));
+		$this->assertTrue(BB::isFalse(false));
+		
+		$this->assertFalse(BB::isFalse(1));
+		$this->assertFalse(BB::isFalse("a"));
+		$this->assertFalse(BB::isFalse(0.1));
+		$this->assertFalse(BB::isFalse(-1));
+		$this->assertFalse(BB::isFalse(true));
+	}
 	
 	
 	
@@ -41,6 +66,9 @@ class BBTest extends CakeTestCase {
 		$this->assertTrue(BB::isAssoc($this->notRealVector));
 		$this->assertFalse(BB::isAssoc($this->notRealAssoc));
 	}
+	
+	
+	
 	
 }
 

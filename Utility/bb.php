@@ -12,6 +12,52 @@ class BB {
 		return '1.0.0';
 	}
 
+	
+	/**
+	 * Test a value to be a real "false" PHP value.
+	 * 
+	 * @param type $val
+	 * @return boolean
+	 */
+	public static function isFalse($val = '') {
+		if (!$val || empty($val) || $val == "0") {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	/**
+	 * Test a value to be TRUE/POSITIVE value.
+	 * - non false value
+	 * - numbers grower than Zero
+	 */
+	public static function isTrue($val = '') {
+		if (self::isFalse($val)) return false;
+		if (is_numeric($val)) return $val > 0;
+		return true;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // -------------------------------------------------- //				
 // ---[[   C O N F I G U R E   D R I V E R S   ]] --- //				
 // -------------------------------------------------- //
@@ -99,6 +145,36 @@ class BB {
 		ddebug(self::read($key));
 	}
 
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+
+
+
+
+
+
+
+
+
+
 // --------------------------------------------- //
 // ---[[   A R R A Y   U T I L I T I E S   ]]--- //
 // --------------------------------------------- //
@@ -143,9 +219,10 @@ class BB {
 						};
 				break;
 			// remove every "non true" values.
+			// "-1" is a "non false" value!!!
 			case 'strict':
 				$callback = function($val) {
-							return !empty($val) && $val;
+							return !self::isFalse($val);
 						};
 				break;
 		}
@@ -154,12 +231,17 @@ class BB {
 		if (gettype($mode) == 'function') {
 			$callback = $mode;
 		}
-
-		return Hash::filter($arr, $callback);
+		
+		// vector array needs to reset keys after filtering!
+		if (self::isVector($arr)) {
+			return array_values(Hash::filter($arr, $callback));
+		} else {
+			return Hash::filter($arr, $callback);
+		}
 	}
 
 	/**
-	 * remove a list of keys ($remove) from given array then clear it
+	 * remove a list of keys ($remove) from given array then clearEmpty values
 	 */
 	public static function clear($arr = array(), $remove = array(), $mode = 'val') {
 		if (!is_array($remove)) {
@@ -167,18 +249,50 @@ class BB {
 		}
 		if (!empty($remove)) {
 			if (self::isVector($arr)) {
-				$arr = array_diff($arr, $remove);
+				$arr = array_values(array_diff($arr, $remove));
 			} else {
 				foreach ($remove as $tmp) {
 					unset($arr[$tmp]);
 				}
 			}
 		}
-		// prevent filtering empty values
-		if ($mode == false) {
+		if (self::isTrue($mode)) {
+			return self::clearEmpty($arr, $mode);
+		} else {
 			return $arr;
 		}
-		return self::clearEmpty($arr, $mode);
+	}
+	
+	/**
+	 * remove a list of values from the given array then clearEmpty values
+	 */
+	public static function clearValues($arr = array(), $remove = array(), $mode = 'val') {
+		if (self::isVector($arr)) {
+			return self::clear($arr, $remove, $mode);
+		}
+		if (!is_array($remove)) {
+			$remove = array($remove);
+		}
+		if (!empty($remove)) {
+			foreach ($arr as $key=>$val) {
+				if (in_array($val, $remove)) {
+					unset($arr[$key]);
+				}
+			}
+		}
+		if (self::isTrue($mode)) {
+			return self::clearEmpty($arr, $mode);
+		} else {
+			return $arr;
+		}
+	}
+	
+	/**
+	 * remove a list of values or keys from the given array then clearEmpty values
+	 */
+	public static function clearAll($arr = array(), $remove = array(), $mode = 'val') {
+		$arr = self::clearValues($arr, $remove, $mode);
+		return self::clear($arr, $remove, $mode);
 	}
 
 	/**
@@ -218,7 +332,7 @@ class BB {
 					if (is_string($tmp) && substr($tmp, 0, 3) == '$--') {
 						$atmp = substr($tmp, 3);
 						if (in_array($atmp, $a)) {
-							$a = array_diff($a, array($atmp));
+							$a = array_values(array_diff($a, array($atmp)));
 							continue;
 						}
 						// prevent values duplication
@@ -278,7 +392,7 @@ class BB {
 				if (!array_key_exists($key, $a) || empty($a[$key])) {
 					$a[$key] = $b[$key];
 
-					// recursive extends keys
+				// recursive extends keys
 				} else {
 					$a[$key] = self::extend($a[$key], $b[$key]);
 				}
