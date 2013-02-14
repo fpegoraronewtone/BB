@@ -16,6 +16,7 @@ class AllBlackBeardTest extends CakeTestSuite {
 		$suite = new CakeTestSuite("BlackBeard Core Plugin Test Suite!");
 		$suite->addTestDirectory(dirname(__FILE__) . DS . 'Controller' . DS . 'Component');
 		$suite->addTestDirectory(dirname(__FILE__) . DS . 'Utility');
+		$suite->addTestDirectory(dirname(__FILE__) . DS . 'View' . DS . 'Helper');
 		return $suite;
 	}
 	

@@ -9,14 +9,21 @@ App::import('View/Helper', 'HtmlHelper');
 
 class BbHtmlHelper extends HtmlHelper {
 	
-	public function foo() {
-		echo "BbHelper::foo()";
-	}
+	/**
+	 * list all tags who're allowed to exists with an empty value by default
+	 */
+	public $allowEmptyTags = 'span,td,th,i,b,img,input,iframe';
 	
 	
 	/**
 	 * CakePHP Override
-	 * implement a full or partial array configuration to nested tags
+	 * implement a full or partial array configuration to nested tags by
+	 * setting $name as a single array param.
+	 * 
+	 * $text should be an array, this way tag() recurse in parse $text
+	 * as a full array config tag who's result is used as plain text content
+	 * for actual tag definition.
+	 * 
 	 */
 	public function tag($name = '', $text = null, $options = array()) {
 		
@@ -39,31 +46,77 @@ class BbHtmlHelper extends HtmlHelper {
 			}
 		}
 		
-		
-		// $TEXT AS ARRAY MEANS SUB TAGS
-		if (is_array($text)) {
-			$text = $this->tag($text);
-		}
-		
 		// Apply default internal options to create complex behaviors
-		$options = BB::setAttr($options, $internalOptions = array(
-			'allowEmpty' => false,
-			'if' => true
+		$options = BB::setDefaultAttrs($options, $internalOptions = array(
+			'allowEmpty' => $this->allowEmptyTags,
+			'if' => true,
+			'prepend' => '',
+			'append' => ''
 		));
 		
+		// handle conditional tag option:
+		switch( gettype($options['if']) ) {
+			case 'string':
+			case 'object':
+			case 'array':
+				$options['if'] = $this->_solveConditionalTag($name, $text, $options);
+				break;
+		}
+		// conditional content
+		if (!$options['if']) {
+			if (!empty($options['else'])) {
+				$text = $options['else'];
+			} else {
+				return;
+			}
+		}
+		
+		// $text as Array means sub-tags to be rendered
+		if (is_array($text)) {
+			ob_start();
+			if (BB::isVector($text)) {
+				foreach($text as $childOptions) {
+					if (is_array($childOptions)) {
+						$childOptions = $this->tag($childOptions);
+					}
+					echo $childOptions;
+				}
+			} else {
+				echo $this->tag($text);
+			}
+			$text = ob_get_clean();
+		}
+		
 		// Prevent empty tags
-		if (empty($text) && !$options['allowEmpty']) {
-			return;
+		if (empty($text) && $options['allowEmpty'] !== true) {
+			if (!in_array($name, explode(',', $options['allowEmpty']))) return;
+		}
+		
+		// prepend - append content
+		if (!empty($options['prepend'])) {
+			if (is_array($options['prepend'])) {
+				$text = $this->tag($options['prepend']) . $text;
+			} else {
+				$text = $this->tag($options['prepend'], '') . $text;
+			}
+		}
+		if (!empty($options['append'])) {
+			if (is_array($options['append'])) {
+				$text.= $this->tag($options['append']);
+			} else {
+				$text.= $this->tag($options['append'], '');
+			}
 		}
 		
 		// super::tag() with cleaned options array
-		return parent::tag($name, $text, BB::clear($options, array_keys($internalOptions)));
+		// "div" tag is applied as default tag type.
+		return parent::tag(!empty($name)?$name:'div', $text, BB::clear($options, array_keys($internalOptions)));
 	}
 	
 	protected function _tagWithArrayConfig($options) {
 		
 		$options = BB::extend(array(
-			'tag' => 'div',
+			'tag' => '',
 			'content' => '',
 			'show' => ''
 		), $options);
@@ -83,22 +136,40 @@ class BbHtmlHelper extends HtmlHelper {
 			if (BB::isAssoc($options['content'])) {
 				$options['content'] = array($options['content']);
 			}
-			// list of sub-tags declarations
-			if (BB::isVector($options['content'])) {
-				$options['show'] = '';
-				foreach($options['content'] as $childOptions) {
-					if (is_array($childOptions)) {
-						$childOptions = $this->tag($childOptions);
-					}
-					$options['show'].= $childOptions;
-				}
-			} else {
-				$options['show'] = $options['content'];
-			}
+			
+			$options['show'] = $options['content'];
 		}
 		
-		return $this->tag($options['tag'], $options['show'], BB::clear($options,array('tag', 'content', 'show')));
+		// does not remove null or empty options... tag() may need NULL
+		// informations! (es "if" conditions)
+		return $this->tag($options['tag'], $options['show'], BB::clear($options,array('tag', 'content', 'show'), false));
 	}
+	
+	/**
+	 * Logics to solves conditional tag callbacks with closures or
+	 * array format callbacks given 
+	 * 
+	 */
+	protected function _solveConditionalTag($name, $text, $options) {
+		
+		if (!is_array($options['if'])) {
+			$args = array($options['if']);
+		} else {
+			$args = $options['if'];
+		}
+		
+		$args = BB::extend($args, array($name, $text, BB::clear($options, 'if', false)));
+		
+		$res = BB::callback($args);
+		if ($res === null) {
+			return $options['if'];
+		} else {
+			return $res;
+		}
+		
+	}
+	
+	
 	
 }
 

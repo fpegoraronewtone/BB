@@ -47,7 +47,7 @@ class BBCallbackTest extends CakeTestCase {
 			BB::callback(function() { return 'aaa'; }),
 			'aaa'
 		);
-			$this->assertEqual(
+		$this->assertEqual(
 			BB::callback(function($p) { return $p; }, 'aaa'),
 			'aaa'
 		);

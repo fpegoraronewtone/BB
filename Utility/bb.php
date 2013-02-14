@@ -391,7 +391,11 @@ class BB {
 					if (!array_key_exists($akey, $a)) {
 						$a[$akey] = $b[$key];
 					} else {
-						$a[$akey].= $b[$key];
+						if (is_array($a[$akey])) {
+							$a[$akey] = BB::extend($a[$akey], $b[$key]);
+						} else {
+							$a[$akey].= $b[$key];
+						}
 					}
 					continue;
 				}
@@ -417,11 +421,99 @@ class BB {
 	
 	
 	/**
+	 * It work much like extend but skip overriding when keys exists!
+	 * You should override enyway by using "$__" operator 
+	 * or "$__overrides_$" array!
+	 */
+	public static function defaults() {
+		
+		// need to bybass a "false" value because it may be considered as
+		// end of the while{}!
+		$args = array();
+		foreach (func_get_args() as $arg) {
+			if ($arg === false) {
+				$arg = '$__false__$';
+			}
+			$args[] = $arg;
+		}
+		
+		$a = current($args);
+		while (($b = next($args)) !== false) {
+			
+			// reset real "false" value!
+			if ($a === '$__false__$') { $a = false; }
+			if ($b === '$__false__$') { $b = false; }
+			
+			// scalar values overrides array and array overrides scalar values!
+			if (!is_array($a) || !is_array($b)) {
+				if (empty($a) && !is_bool($a) && $a !== 0) {
+					$a = $b;
+				}
+				continue;
+			}
+			
+			// $__overrides__$
+			// use reset array filled with keys to be resetted before the 
+			// extension action. 
+			if (array_key_exists('$__overrides__$', $b)) {
+				if (!is_array($b['$__overrides__$'])) {
+					$b['$__overrides__$'] = array($b['$__overrides__$']);
+				}
+				foreach ($b['$__overrides__$'] as $ovKey) {
+					// try to preserve key position if possible!
+					if (array_key_exists($ovKey, $b)) {
+						$a[$ovKey] = '$__overrides__$';
+					} else {
+						unset($a[$ovKey]);
+					}
+				}
+				unset($b['$__overrides__$']);
+			}
+			
+			// deep extends key by key
+			foreach (array_keys($b) as $key) {
+				
+				// reset key in $a
+				if (substr($key, 0, 3) == '$__') {
+					$akey = substr($key, 3);
+					$a[$akey] = $b[$key];
+					continue;
+				}
+				
+				// append strings or sum integers
+				if (substr($key, 0, 3) == '$++') {
+					$akey = substr($key, 3);
+					if (!array_key_exists($akey, $a)) {
+						$a[$akey] = $b[$key];
+					} else {
+						if (is_array($a[$akey])) {
+							$a[$akey] = BB::extend($a[$akey], $b[$key]);
+						} else {
+							$a[$akey].= $b[$key];
+						}
+					}
+					continue;
+				}
+				
+				// apply default value or implement overrides
+				if (!array_key_exists($key, $a) || $a[$key] === '$__overrides__$') {
+					$a[$key] = $b[$key];
+				
+				} elseif (is_array($a[$key]) && is_array($b[$key])) {
+					$a[$key] = self::defaults($a[$key], $b[$key]);
+				}	
+			}
+		}
+		return $a;
+	}
+	
+	
+	/**
 	 * Apply some default values to a given $origin.
 	 * $origin should be an array to extend $defaults but if you give a
 	 * scalar it should be translated into an array using the $options rules
 	 */
-	public static function set($origin = array(), $defaults = array(), $options = array()) {
+	public static function setDefaults($origin = array(), $defaults = array(), $options = array()) {
 		
 		// compose data driver array from mishellaneous type of formats
 		if (!is_array($options)) {
@@ -444,16 +536,17 @@ class BB {
 			}
 		}
 		
+		
 		if (!is_array($origin) && !empty($options['else'])) {
 			$tmp = array();
 			$tmp[$options['else']] = $origin;
 			$origin = $tmp;
 		}
 		
-		return BB::extend($defaults, $origin);
+		return BB::defaults($origin, $defaults);
 	}
 	
-	public static function setAttr($origin = array(), $defaults = array()) {
+	public static function setDefaultAttrs($origin = array(), $defaults = array()) {
 		// extends tag default values with custom given defaults
 		$defaults = BB::extend(array(
 			'id' => '',
@@ -462,11 +555,11 @@ class BB {
 		), $defaults);
 		
 		if (is_array($origin)) {
-			return self::set($origin, $defaults);
+			return self::setDefaults($origin, $defaults);
 		} elseif (strpos($origin, ':') !== false) {
-			return self::set($origin, $defaults, 'style');
+			return self::setDefaults($origin, $defaults, 'style');
 		} else {
-			return self::set($origin, $defaults, 'class');
+			return self::setDefaults($origin, $defaults, 'class');
 		}
 	}
 	
@@ -480,6 +573,12 @@ class BB {
 		// get arguments
 		$args = func_get_args();
 		if (empty($args)) {return;}
+		
+		// allow to give an array of arguments instead of a list of arguments
+		// useful when composing a callback programmatically
+		if (count($args) == 1 && BB::isVector($args[0])) {
+			$args = $args[0];
+		}
 		
 		// callable closure
 		if (is_callable($args[0]) && gettype($args[0]) == 'object') {
