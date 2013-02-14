@@ -416,6 +416,11 @@ class BB {
 	}
 	
 	
+	/**
+	 * Apply some default values to a given $origin.
+	 * $origin should be an array to extend $defaults but if you give a
+	 * scalar it should be translated into an array using the $options rules
+	 */
 	public static function set($origin = array(), $defaults = array(), $options = array()) {
 		
 		// compose data driver array from mishellaneous type of formats
@@ -446,11 +451,10 @@ class BB {
 		}
 		
 		return BB::extend($defaults, $origin);
-		
 	}
 	
 	public static function setAttr($origin = array(), $defaults = array()) {
-		
+		// extends tag default values with custom given defaults
 		$defaults = BB::extend(array(
 			'id' => '',
 			'class' => '',
@@ -464,7 +468,40 @@ class BB {
 		} else {
 			return self::set($origin, $defaults, 'class');
 		}
-		
 	}
-
+	
+	
+	
+	/**
+	 * unified interface to run callbacks
+	 */
+	public static function callback() {
+		
+		// get arguments
+		$args = func_get_args();
+		if (empty($args)) {return;}
+		
+		// callable closure
+		if (is_callable($args[0]) && gettype($args[0]) == 'object') {
+			$callback = array_shift($args);
+			return call_user_func_array($callback, $args);
+		}
+		
+		// callable array at first params
+		if (is_callable($args[0])) {
+			$callback = array_shift($args);
+			return call_user_func_array($callback, $args);
+		}
+		
+		// array of params: translate first 2 items into a candidate
+		// callable array
+		if (is_array($args) && count($args) >= 2) {
+			$callable = array(array_shift($args), array_shift($args));
+			if (is_callable($callable)) {
+				return call_user_func_array($callable, $args);
+			}
+		}
+	}
+	
+	
 }
