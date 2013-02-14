@@ -50,9 +50,25 @@ class BbHtmlHelper extends HtmlHelper {
 		$options = BB::setDefaultAttrs($options, $internalOptions = array(
 			'allowEmpty' => $this->allowEmptyTags,
 			'if' => true,
+			'else' => null,
 			'prepend' => '',
-			'append' => ''
+			'append' => '',
+			'repeater' => null,
+			'data' => null
 		));
+		
+		// ***** UNDER DEVELOPE ******
+		// -- REPEATER LISTS --
+		if (!empty($options['repeater'])) {
+			$repeater = $options['repeater'];
+			$options = BB::clear($options, 'repeater', false);
+			ob_start();
+			foreach ($repeater as $repeaterItem) {
+				echo $this->tag($name, $text, BB::extend($options, array('data' => $repeaterItem)));
+			}
+			return ob_get_clean();
+		}
+		// ***** UNDER DEVELOPE ******
 		
 		// handle conditional tag option:
 		switch( gettype($options['if']) ) {
@@ -86,6 +102,13 @@ class BbHtmlHelper extends HtmlHelper {
 			}
 			$text = ob_get_clean();
 		}
+		
+		// ***** UNDER DEVELOPE ******
+		// -- APPLY DYNAMIC DATA --
+		if (!empty($options['data'])) {
+			$text = str_replace('{n}', $options['data'], $text);
+		}
+		// ***** UNDER DEVELOPE ******
 		
 		// Prevent empty tags
 		if (empty($text) && $options['allowEmpty'] !== true) {
@@ -162,7 +185,14 @@ class BbHtmlHelper extends HtmlHelper {
 		
 		$res = BB::callback($args);
 		if ($res === null) {
-			return $options['if'];
+			// complex type of conditional input that returns a "null" value
+			// when evaluated as callbacks means a callback does not exists
+			// so they return a false value!
+			if (is_array($options['if']) || is_object($options['if'])) {
+				return false;
+			} else {
+				return $options['if'];
+			}
 		} else {
 			return $res;
 		}

@@ -4,15 +4,33 @@ App::uses('Controller', 'Controller');
 App::uses('View', 'View');
 App::uses('BbHtmlHelper', 'BB.View/Helper');
 
+
+
+
+/**
+ * Method and class are both used to test conditional tag with callbacks
+ */
+function BBtestHtmlTagFunc($p) {
+	return $p;
+}
+class BBtestTagCondClass {
+	public static function test($p) {
+		return $p;
+	}
+}
+
+
 class BBHtmlTagTest extends CakeTestCase {
 	
 	public $Html = null;
+	public $Obj = null;
 	
 	public function setUp() {
 		parent::setUp();
 		$Controller = new Controller();
 		$View = new View($Controller);
 		$this->Html = new BbHtmlHelper($View);
+		$this->Obj = new BBtestTagCondClass();
 	}
 	
 	
@@ -230,6 +248,54 @@ class BBHtmlTagTest extends CakeTestCase {
 		$this->assertEmpty($this->Html->tag('h1', 'test', array('if' => null)));
 		$this->assertNotEmpty($this->Html->tag('h1', 'test', array('if' => 'false')));
 		$this->assertNotEmpty($this->Html->tag('h1', 'test', array('if' => true)));
+	}
+	
+	public function testIfFunctionCallback() {
+		$this->assertEqual(
+			$this->Html->tag('h1', 'test', array('if' => array('BBtestHtmlTagFunc', true))),
+			'<h1>test</h1>'
+		);
+		$this->assertEqual(
+			$this->Html->tag('h1', 'test', array('if' => array('BBtestHtmlTagFunc', 'false'))),
+			'<h1>test</h1>'
+		);
+		$this->assertEqual(
+			$this->Html->tag('h1', 'test', array('if' => array('BBtestHtmlTagFunc', 'null'))),
+			'<h1>test</h1>'
+		);
+		$this->assertEmpty($this->Html->tag('h1', 'test', array('if' => array('BBtestHtmlTagFunc', false))));
+		$this->assertEmpty($this->Html->tag('h1', 'test', array('if' => array('BBtestHtmlTagFunc', null))));
+		$this->assertEmpty($this->Html->tag('h1', 'test', array('if' => array('BBtestHtmlTagFunc', ''))));
+		$this->assertEmpty($this->Html->tag('h1', 'test', array('if' => array('BBtestHtmlTagFunc', 0))));
+	}
+	
+	public function testIfStaticMethodCallback() {
+		$this->assertEqual(
+			$this->Html->tag('h1', 'test', array('if' => array('BBtestTagCondClass', 'test', true))),
+			'<h1>test</h1>'
+		);
+		$this->assertEqual(
+			$this->Html->tag('h1', 'test', array('if' => array(array('BBtestTagCondClass', 'test'), true))),
+			'<h1>test</h1>'
+		);
+		$this->assertEqual(
+			$this->Html->tag('h1', 'test', array('if' => array('BBtestTagCondClass::test', true))),
+			'<h1>test</h1>'
+		);
+		$this->assertEmpty($this->Html->tag('h1', 'test', array('if' => array('BBtestTagCondClass', 'test', false))));
+		$this->assertEmpty($this->Html->tag('h1', 'test', array('if' => array(array('BBtestTagCondClass', 'test'), null))));
+		$this->assertEmpty($this->Html->tag('h1', 'test', array('if' => array('BBtestTagCondClass::test', ''))));
+	}
+	
+	public function testElseStatement() {
+		$this->assertEqual(
+			$this->Html->tag(array('tag' => 'h1', 'if' => true, 'show' => 'true', 'else' => 'false')),
+			'<h1>true</h1>'
+		);
+		$this->assertEqual(
+			$this->Html->tag(array('tag' => 'h1', 'if' => false, 'show' => 'true', 'else' => 'false')),
+			'<h1>false</h1>'
+		);
 	}
 	
 }
