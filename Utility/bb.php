@@ -6,6 +6,11 @@
  * Static utility library to store all BlackBeard's add-ons to CakePHP
  * 
  */
+
+
+define('BB_CALLBACK_OPT', 'BB_CALLBACK_OPT');
+
+
 class BB {
 
 	public static function version() {
@@ -565,8 +570,80 @@ class BB {
 	
 	
 	
+	
+
+	
+	
+	
+	
+	
+// ------------------------------------------------- //
+// ---[[   S T R I N G S   U T I L I T I E S   ]]--- //
+// ------------------------------------------------- //
+	
+	public static function tpl($tpl, $data = array(), $clr = array(), $options = array()) {
+		
+		$options = BB::extend(array(
+			'before' => '{',
+			'after' => '}',
+			'context' => null
+		), $options);
+		
+		// safe source data from objects translating them to associative!
+		// flatting data array should speed up values extracting process for
+		// end point keys!
+		$data = json_decode(json_encode($data), true);
+		$fdata = Hash::flatten($data);
+		
+		// analyze placeholders
+		preg_match_all("|" . $options['before'] . "(.*)" . $options['after'] . "|U", $tpl, $matches);
+		for ($i=0; $i< count($matches[0]); $i++) {
+			
+			$var = BB::tplVarTokenizer($matches[1][$i]);
+			debug($var);
+			
+			// fetch data from context array
+			if (array_key_exists($var['path'], $fdata)) {
+				$val = $fdata[$var['path']];
+			} else {
+				$val = Hash::extract($data, $var['path']) ;
+				if (empty($val)) $val = '';
+			}
+			
+			// pass throught multiple modifier
+			foreach ($var['methods'] as $method) {
+				ob_start();
+				$val = BB::callback($method['callback'], $val, BB_CALLBACK_CONTEXT, $options['context']);
+				ob_get_clean();
+			}
+			
+			$tpl = str_replace($matches[0][$i], $val, $tpl);
+			
+		}
+		
+		return $tpl;
+		//return String::insert($tpl, $data, $options);
+		
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+// ----------------------------------------- //
+// ---[[   M I S H E L L A N E O U S   ]]--- //
+// ----------------------------------------- //
+	
 	/**
 	 * unified interface to run callbacks
+	 * (see TestCase to learn how to use!)
 	 */
 	public static function callback() {
 		
@@ -578,6 +655,49 @@ class BB {
 		// useful when composing a callback programmatically
 		if (count($args) == 1 && BB::isVector($args[0])) {
 			$args = $args[0];
+		}
+		
+		// extract execution context and execution objects
+		$mode = null;
+		$objects = array();
+		foreach($args as $i=>$arg) {
+			
+			// switch arguments read mode;
+			if ($arg === BB_CALLBACK_OPT) {
+				$mode = 'options';
+				unset($args[$i]);
+				continue;
+			}
+			
+			switch($mode) {
+				case 'options':
+					if (is_object($arg)) {
+						$objects['this'] = $arg;
+					} elseif (BB::isAssoc($arg)) {
+						$objects = BB::extend($objects, $arg);
+					}
+					unset($args[$i]);
+					break;
+			}
+			
+		}
+		
+		// Try to run a method inside given execution objects
+		foreach($objects as $name=>$context) {
+			$vname = '$' . $name . '->';
+			if (substr($args[0], 0, strlen($vname)) === $vname && is_object($context)) {
+				$tokens = explode('->', $args[0]);
+				array_shift($tokens);
+				
+				foreach($tokens as $token) {
+					if (is_callable(array($context, $token))) {
+						array_shift($args);
+						return call_user_func_array(array($context, $token), $args);
+					} else {
+						$context = $context->$token;
+					}	
+				}
+			}
 		}
 		
 		// callable closure
@@ -601,6 +721,60 @@ class BB {
 			}
 		}
 	}
+	
+	public static function tplVarTokenizer($str) {
+		$results = array(
+			'path' => '',
+			'type' => null,
+			'methods' => array()
+		);
+		
+		$tokens = explode('|', $str);
+		
+		// path setup
+		$results['path'] = trim(array_shift($tokens));
+		if (substr($results['path'], 0, 1) === '$') {
+			$results['path'] = substr($results['path'], 1);
+			$results['type'] = '$';
+		}
+		
+		foreach($tokens as $method) {
+			$results['methods'][] = BB::tplMethodTokenizer($method);
+		}
+		
+		return $results;
+		
+	}
+	
+	public static function tplMethodTokenizer($str) {
+		$results = array(
+			'callback' => '',
+			'params' => array()
+		);
+		
+		// investigate for a static method request:
+		if (strpos($str, '::') !== false && strpos($str, '::') === strpos($str, ':')) {
+			$results['callback'] = substr($str, 0, strpos($str, ':', strpos($str, '::')+2));
+			if (empty($results['callback'])) $results['callback'] = $str;
+			$str = substr($str, strlen($results['callback'])+1);
+			$tokens = explode(':', $str);
+		
+		// direct function request:
+		} else {
+			$tokens = explode(':', $str);
+			$results['callback'] = trim(array_shift($tokens));
+		}
+		
+		// build given params
+		if (!empty($tokens)) {
+			foreach(explode(',', $tokens[0]) as $param) {
+				$results['params'][] = trim($param);
+			}
+		}
+		
+		return $results;
+	}
+	
 	
 	
 }

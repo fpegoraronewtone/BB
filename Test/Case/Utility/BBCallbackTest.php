@@ -8,6 +8,9 @@
  */
 
 App::uses('bb', 'BB.Utility');
+App::uses('Controller', 'Controller');
+App::uses('View', 'View');
+App::uses('BbHtmlHelper', 'BB.View/Helper');
 
 function BB_testCallbackFunc($p = '') {
 	return "BB_testCallbackFunc: $p";
@@ -29,10 +32,18 @@ class BB_testCallbackClass {
 class BBCallbackTest extends CakeTestCase {
 	
 	public $testCallback = null;
+	public $Html = null;
 	
 	public function setUp() {
 		parent::setUp();
+		
+		// Test context
 		$this->testCallback = new BB_testCallbackClass();
+		
+		// HtmlHelper used to test context behavior
+		$Controller = new Controller();
+		$View = new View($Controller);
+		$this->Html = new BbHtmlHelper($View);
 	}
 	
 	
@@ -94,6 +105,67 @@ class BBCallbackTest extends CakeTestCase {
 		$this->assertEqual(
 			BB::callback('BB_testCallbackClass::byStatic', 22),
 			'BB_testCallbackClass::byStatic(22)'
+		);
+	}
+	
+	/**
+	 * Test callback's execution context ($this) and execution arguments.
+	 * third test implements an aliasing!
+	 */
+	public function testContext01() {
+		$this->assertEqual(
+			BB::callback('$this->byInstance', 'Test', BB_CALLBACK_OPT, $this->testCallback),
+			'BB_testCallbackClass::byInstance(Test)'
+		);
+		$this->assertEqual(
+			BB::callback('$this->testCallback->byInstance', 'Test', BB_CALLBACK_OPT, $this),
+			'BB_testCallbackClass::byInstance(Test)'
+		);
+		$this->assertEqual(
+			BB::callback('$TestObjectName->byInstance', 'Test', BB_CALLBACK_OPT, $this, array('TestObjectName' => $this->testCallback)),
+			'BB_testCallbackClass::byInstance(Test)'
+		);
+	}
+	
+	
+	public function testHtmlHelper() {
+		// giving access to class's context
+		$this->assertEqual(
+			BB::callback('$this->Html->tag', 'h1', 'Test', 'className', BB_CALLBACK_OPT, $this),
+			'<h1 class="className">Test</h1>'
+		);
+		$this->assertEqual(
+			BB::callback('$this->Html->tag', 'h1', 'Test', 'color:red', BB_CALLBACK_OPT, $this),
+			'<h1 style="color:red">Test</h1>'
+		);
+		// giving HtmlHelper as execution object
+		$this->assertEqual(
+			BB::callback('$Html->tag', 'h1', 'Test', 'className', BB_CALLBACK_OPT, array('Html' => $this->Html)),
+			'<h1 class="className">Test</h1>'
+		);
+		$this->assertEqual(
+			BB::callback('$Html->tag', 'h1', 'Test', 'color:red', BB_CALLBACK_OPT, array('Html' => $this->Html)),
+			'<h1 style="color:red">Test</h1>'
+		);
+		// giving HtmlHelper as execution context
+		$this->assertEqual(
+			BB::callback('$this->tag', 'h1', 'Test', 'className', BB_CALLBACK_OPT, $this->Html),
+			'<h1 class="className">Test</h1>'
+		);
+		$this->assertEqual(
+			BB::callback('$this->tag', 'h1', 'Test', 'color:red', BB_CALLBACK_OPT, $this->Html),
+			'<h1 style="color:red">Test</h1>'
+		);
+	}
+	
+	/**
+	 * You can give an array of arguments instead of a list of.
+	 * It may be useful when composing a callback programmatically!
+	 */
+	public function testCallWithArrayArguments() {
+		$this->assertEqual(
+			BB::callback(array('$this->tag', 'h1', 'Test', 'color:red', BB_CALLBACK_OPT, $this->Html)),
+			'<h1 style="color:red">Test</h1>'
 		);
 	}
 	
