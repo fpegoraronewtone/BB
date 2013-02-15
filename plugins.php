@@ -26,7 +26,8 @@
 if (empty($plugins)) {
 	foreach (App::path('plugins') as $path) {
 		$repo = new Folder($path);
-		foreach ($repo->read()[0] as $pluginName) {
+		$repo = $repo->read();
+		foreach ($repo[0] as $pluginName) {
 
 			// skip plugins that are already loaded 
 			if (CakePlugin::loaded($pluginName)) {

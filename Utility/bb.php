@@ -217,17 +217,17 @@ class BB {
 			// and boolean false param values.
 			case 'val':
 				$callback = function($val) {
-							if ($val === 0 || $val === '0' || $val === false || !empty($val)) {
-								return true;
-							}
-							return false;
-						};
+					if ($val === 0 || $val === '0' || $val === false || !empty($val)) {
+						return true;
+					}
+					return false;
+				};
 				break;
 			// remove every "non true" values.
 			// "-1" is a "non false" value!!!
 			case 'strict':
 				$callback = function($val) {
-							return !self::isFalse($val);
+							return !BB::isFalse($val);
 						};
 				break;
 		}
@@ -514,11 +514,14 @@ class BB {
 	
 	
 	/**
-	 * Apply some default values to a given $origin.
-	 * $origin should be an array to extend $defaults but if you give a
-	 * scalar it should be translated into an array using the $options rules
+	 * translate a $origin value from various type to an associative array
+	 * by assigning each type of var to a defined key
+	 * 
+	 * set('Mark', 'name') -> array('name' => 'Mark')
+	 * set(22, array('integer' => 'age', 'else' => 'name')) -> array('age' => 22)
+	 * set('Mark, array('integer' => 'age', 'else' => 'name')) -> array('name' => 'Mark')
 	 */
-	public static function setDefaults($origin = array(), $defaults = array(), $options = array()) {
+	public static function set($origin = array(), $options = array()) {
 		
 		// compose data driver array from mishellaneous type of formats
 		if (!is_array($options)) {
@@ -548,10 +551,28 @@ class BB {
 			$origin = $tmp;
 		}
 		
-		return BB::defaults($origin, $defaults);
+		return $origin;
 	}
 	
-	public static function setDefaultAttrs($origin = array(), $defaults = array()) {
+	
+	
+	/**
+	 * extend $defaults data with $data
+	 * $data is translated to associative array using set() with $options rules
+	 */
+	public static function setExtend($defaults = array(), $data = array(), $options = array()) {
+		return BB::extend($defaults, self::set($data, $options));
+	}
+	
+	/**
+	 * apply some $defaults values to a given $data.
+	 * $data is translated to associative array using set() with $options rules
+	 */
+	public static function setDefaults($data = array(), $defaults = array(), $options = array()) {
+		return BB::defaults(self::set($data, $options), $defaults);
+	}
+	
+	public static function setDefaultAttrs($data = array(), $defaults = array()) {
 		// extends tag default values with custom given defaults
 		$defaults = BB::extend(array(
 			'id' => '',
@@ -559,12 +580,12 @@ class BB {
 			'style' => ''
 		), $defaults);
 		
-		if (is_array($origin)) {
-			return self::setDefaults($origin, $defaults);
-		} elseif (strpos($origin, ':') !== false) {
-			return self::setDefaults($origin, $defaults, 'style');
+		if (is_array($data)) {
+			return self::setDefaults($data, $defaults);
+		} elseif (strpos($data, ':') !== false) {
+			return self::setDefaults($data, $defaults, 'style');
 		} else {
-			return self::setDefaults($origin, $defaults, 'class');
+			return self::setDefaults($data, $defaults, 'class');
 		}
 	}
 	
@@ -581,13 +602,22 @@ class BB {
 // ---[[   S T R I N G S   U T I L I T I E S   ]]--- //
 // ------------------------------------------------- //
 	
-	public static function tpl($tpl, $data = array(), $clr = array(), $options = array()) {
+	public static function tpl($tpl, $data = array(), $options = array()) {
 		
-		$options = BB::extend(array(
+		$options = BB::setExtend(array(
 			'before' => '{',
 			'after' => '}',
-			'context' => null
-		), $options);
+			'swipe' => array(),
+			'swipeReplace' => '',
+			'clear' => false,
+			'context' => null,
+			'objects' => null
+		), $options, array(
+			'boolean' => 'clear',
+			'object' => 'context'
+		));
+		
+		
 		
 		// safe source data from objects translating them to associative!
 		// flatting data array should speed up values extracting process for
@@ -599,31 +629,80 @@ class BB {
 		preg_match_all("|" . $options['before'] . "(.*)" . $options['after'] . "|U", $tpl, $matches);
 		for ($i=0; $i< count($matches[0]); $i++) {
 			
+			$val = '$__noValueFound__$';
 			$var = BB::tplVarTokenizer($matches[1][$i]);
-			debug($var);
+			#debug($var);
 			
-			// fetch data from context array
-			if (array_key_exists($var['path'], $fdata)) {
+			// fetch full data - to be sent to a modificator
+			if ($var['type'] == '$' && $var['path'] == '$') {
+				$val = $data;
+			
+			// fetch flattened data - to be sent to a modificator
+			} elseif ($var['type'] == '$' && $var['path'] == '.') {
+				$val = $fdata;
+			
+			// fetch data from flattened dataset
+			} elseif (array_key_exists($var['path'], $fdata)) {
 				$val = $fdata[$var['path']];
-			} else {
+			
+			// fetch data from given dataset
+			} elseif (Hash::check($data, $var['path'])) {
 				$val = Hash::extract($data, $var['path']) ;
 				if (empty($val)) $val = '';
 			}
 			
 			// pass throught multiple modifier
-			foreach ($var['methods'] as $method) {
-				ob_start();
-				$val = BB::callback($method['callback'], $val, BB_CALLBACK_CONTEXT, $options['context']);
-				ob_get_clean();
+			if ($val !== '$__noValueFound__$') {
+				foreach ($var['methods'] as $method) {
+					ob_start();
+					$cbConfig = array($method['callback'], $val);
+					if (!empty($options['context']) || !empty($options['objects'])) $cbConfig[] = BB_CALLBACK_OPT;
+					if (!empty($options['context'])) $cbConfig[] = $options['context'];
+					if (!empty($options['objects'])) $cbConfig[] = $options['objects'];
+					$val = BB::callback($cbConfig);
+					ob_get_clean();
+				}
+				$tpl = str_replace($matches[0][$i], $val, $tpl);
+			
+			// remove non existing values
+			} elseif ($options['clear']) {
+				$tpl = str_replace($matches[0][$i], '', $tpl);
 			}
-			
-			$tpl = str_replace($matches[0][$i], $val, $tpl);
-			
+		}
+		return self::swipe($tpl, $options['swipe'], $options['swipeReplace']);
+	}
+	
+	/**
+	 * Apply some swipe rules to a given string to remove some pieces of string.
+	 */
+	public static function swipe($str = '', $find = array(), $replaceAll = '') {
+		if (empty($str)) return $str;
+		if (empty($find) || !is_array($find)) $find = array();
+		
+		// build search/replace arrays
+		$_s = array();
+		$_r = array();
+		foreach ($find as $s=>$r) {
+			if (is_numeric($s)) {
+				$_s[] = $r;
+				$_r[] = $replaceAll;
+			} else {
+				$_s[] = $s;
+				$_r[] = $r;
+			}
 		}
 		
-		return $tpl;
-		//return String::insert($tpl, $data, $options);
-		
+		// swipe a list of strings
+		if (is_array($str)) {
+			foreach ($str as $i=>$item) {
+				$str[$i] = str_replace($_s, $_r, $item);
+			}
+			return $str;
+			
+		// swipe a single string
+		} else {
+			return str_replace($_s, $_r, $str);
+		}
 	}
 	
 	

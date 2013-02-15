@@ -15,6 +15,9 @@ class BbHtmlHelper extends HtmlHelper {
 	public $allowEmptyTags = 'span,td,th,i,b,img,input,iframe';
 	
 	
+	public function count($v) {return count($v);}
+	public function pad($v) {return "000$v";}
+	
 	/**
 	 * CakePHP Override
 	 * implement a full or partial array configuration to nested tags by
