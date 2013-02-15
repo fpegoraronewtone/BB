@@ -57,7 +57,9 @@ class BbHtmlHelper extends HtmlHelper {
 			'prepend' => '',
 			'append' => '',
 			'repeater' => null,
-			'data' => null
+			// options to templating with tag's text
+			'data' => array(),
+			'dataOptions' => array()
 		));
 		
 		// ***** UNDER DEVELOPE ******
@@ -96,12 +98,12 @@ class BbHtmlHelper extends HtmlHelper {
 			if (BB::isVector($text)) {
 				foreach($text as $childOptions) {
 					if (is_array($childOptions)) {
-						$childOptions = $this->tag($childOptions);
+						$childOptions = $this->tag(BB::defaults($childOptions, array('data' => $options['data'], 'dataOptions' => $options['dataOptions'])));
 					}
 					echo $childOptions;
 				}
 			} else {
-				echo $this->tag($text);
+				echo $this->tag(BB::defaults($text, array('data' => $options['data'], 'dataOptions' => $options['dataOptions'])));
 			}
 			$text = ob_get_clean();
 		}
@@ -109,7 +111,7 @@ class BbHtmlHelper extends HtmlHelper {
 		// ***** UNDER DEVELOPE ******
 		// -- APPLY DYNAMIC DATA --
 		if (!empty($options['data'])) {
-			$text = str_replace('{n}', $options['data'], $text);
+			$text = BB::tpl($text, $options['data'], $options['dataOptions']);
 		}
 		// ***** UNDER DEVELOPE ******
 		
