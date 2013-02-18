@@ -56,27 +56,64 @@ class BbHtmlHelper extends HtmlHelper {
 			'else' => null,
 			'prepend' => '',
 			'append' => '',
-			'repeater' => null,
 			// options to templating with tag's text
 			'data' => array(),
-			'dataOptions' => array()
+			'dataKey' => null,
+			'dataOptions' => array(),
+			// options to repeat a tag through a dataset
+			'repeater' => '$__repeater__$',
+			'oddItem' => array(),
+			'evenItem' => array()
 		));
 		
-		// ***** UNDER DEVELOPE ******
-		// -- REPEATER LISTS --
-		if (!empty($options['repeater'])) {
-			$repeater = $options['repeater'];
-			$options = BB::clear($options, 'repeater', false);
-			ob_start();
-			foreach ($repeater as $repeaterItem) {
-				echo $this->tag($name, $text, BB::extend($options, array('data' => $repeaterItem)));
+		// $dataKey filter a subset of orignal dynamic data to reduce
+		// data propagation to required tree only
+		if (!empty($options['dataKey']) && is_string($options['dataKey']) && BB::isAssoc($options['data'])) {
+			$candidateData = Hash::extract($options['data'], $options['dataKey']);
+			if (!empty($candidateData) && is_array($candidateData)) {
+				$options['data'] = $candidateData;
+			} else {
+				$options['data'] = array();
 			}
-			return ob_get_clean();
 		}
-		// ***** UNDER DEVELOPE ******
+		
+		// $repeater
+		// cycle through lists of data
+		if ($options['repeater'] !== '$__repeater__$') {
+			// parse non-array values
+			if ($options['repeater'] === true || $options['repeater'] === 'self' || $options['repeater'] === 'data') {
+				$options['repeater'] = $options['data'];
+			} elseif (is_string($options['repeater'])) {
+				$options['repeater'] = Hash::extract($options['data'], $options['repeater']);
+			}
+			// not empty list will cycle each item
+			if (!empty($options['repeater']) && BB::isVector($options['repeater'])) {
+				$repeater = $options['repeater'];
+				$repeaterOdd = $options['oddItem'];
+				$repeaterEven = $options['evenItem'];
+				$options = BB::clear($options, array('repeater', 'oddItem', 'evenItem'), false);
+				ob_start();
+				foreach ($repeater as $i=>$repeaterItem) {
+					$itemData = array('$__data' => $repeaterItem);
+					$itemData['$__data']['__$'] = array(
+						'i' => $i,
+						'di' => ($i+1),
+						'type' => ($i%2)?'even':'odd',
+						'even' => ($i%2)?true:false,
+						'odd' => ($i%2)?false:true,
+					);
+					$itemOptions = BB::extend($options, ($i%2)?$repeaterEven:$repeaterOdd, $itemData);
+					echo $this->tag($name, $text, $itemOptions);
+				}
+				return ob_get_clean();
+			// empty list return nothing
+			} else {
+				return;
+			}
+		}
 		
 		// handle conditional tag option:
-		switch( gettype($options['if']) ) {
+		switch(gettype($options['if'])) {
 			case 'string':
 			case 'object':
 			case 'array':
@@ -93,27 +130,38 @@ class BbHtmlHelper extends HtmlHelper {
 		}
 		
 		// $text as Array means sub-tags to be rendered
+		// sub items inherith dynamic data and dataOptions to be able to
+		// render sub-templates
 		if (is_array($text)) {
+			$dataExtend = array('data' => $options['data'], 'dataOptions' => $options['dataOptions']);
 			ob_start();
 			if (BB::isVector($text)) {
 				foreach($text as $childOptions) {
 					if (is_array($childOptions)) {
-						$childOptions = $this->tag(BB::defaults($childOptions, array('data' => $options['data'], 'dataOptions' => $options['dataOptions'])));
+						// fix - accept last integer key as content
+						$tmp = array_keys($childOptions);
+						if (is_numeric(array_pop($tmp))) $childOptions['content'] = array_pop($childOptions);
+						
+						$childOptions = $this->tag(BB::defaults($childOptions, $dataExtend));
 					}
 					echo $childOptions;
 				}
 			} else {
-				echo $this->tag(BB::defaults($text, array('data' => $options['data'], 'dataOptions' => $options['dataOptions'])));
+				// fix - accept last integer key as content
+				$tmp = array_keys($text);
+				if (is_numeric(array_pop($tmp))) $text['content'] = array_pop($text);
+				
+				echo $this->tag(BB::defaults($text, $dataExtend));
 			}
 			$text = ob_get_clean();
 		}
 		
-		// ***** UNDER DEVELOPE ******
-		// -- APPLY DYNAMIC DATA --
-		if (!empty($options['data'])) {
+		// Parse text content as template for dynamic data
+		// default context is View's class
+		if (!empty($options['data']) && BB::isAssoc($options['data'])) {
+			$options['dataOptions'] = BB::extend(array('context' => $this->_View), $options['data']);
 			$text = BB::tpl($text, $options['data'], $options['dataOptions']);
 		}
-		// ***** UNDER DEVELOPE ******
 		
 		// Prevent empty tags
 		if (empty($text) && $options['allowEmpty'] !== true) {
@@ -179,6 +227,36 @@ class BbHtmlHelper extends HtmlHelper {
 	 * 
 	 */
 	protected function _solveConditionalTag($name, $text, $options) {
+		
+		// plain named coditions:
+		if (is_string($options['if'])) {
+			$testName = $options['if'];
+			$testVal = $options['data'];
+		// named conditions with param:
+		} elseif (is_array($options['if']) && is_string($options['if'][0])) {
+			if (count($options['if']) < 2) return false;
+			$testName = $options['if'][0];
+			$testVal = Hash::extract($options['data'], $options['if'][1]);
+		}
+		
+		// test named conditions:
+		if (isset($testName)) {
+			switch($testName) {
+				case 'dataNotEmpty': 
+				case 'dataKeyNotEmpty':
+					return !empty($testVal);
+				case 'dataIsEmpty': 
+				case 'dataKeyIsEmpty': 
+					return empty($testVal);
+				case 'dataIsAssoc': 
+				case 'dataKeyIsAssoc': 
+					return BB::isAssoc($testVal);
+				case 'dataIsVector': 
+				case 'dataKeyIsVector': 
+					return BB::isVector($testVal);
+			}
+		}
+		
 		
 		if (!is_array($options['if'])) {
 			$args = array($options['if']);

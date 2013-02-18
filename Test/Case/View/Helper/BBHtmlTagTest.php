@@ -25,6 +25,32 @@ class BBHtmlTagTest extends CakeTestCase {
 	public $Html = null;
 	public $Obj = null;
 	
+	public $data = array(
+		'User' => array(
+			'name' => 'Mark',
+			'surname' => 'Sheepkeeper',
+			'date_of_birth' => '30/06/1981',
+			'sex' => 'm'
+		),
+		'Friends' => array(
+			array(
+				'name' => 'Silvy',
+				'surname' => 'Smalltrill',
+				'work' => false
+			),
+			array(
+				'name' => 'Phil',
+				'surname' => 'Sheepkeeper',
+				'work' => true
+			),
+			array(
+				'name' => 'Mark',
+				'surname' => 'Waste',
+				'work' => true
+			)
+		)
+	);
+	
 	public function setUp() {
 		parent::setUp();
 		$Controller = new Controller();
@@ -296,6 +322,71 @@ class BBHtmlTagTest extends CakeTestCase {
 			$this->Html->tag(array('tag' => 'h1', 'if' => false, 'show' => 'true', 'else' => 'false')),
 			'<h1>false</h1>'
 		);
+	}
+	
+	/**
+	 * 'data' attribute allow to use template inside 'show' and 'content' keys
+	 */
+	public function testData() {
+		$this->assertEqual(
+			$this->Html->tag('h1', '{User.name} {User.surname}', array('data' => $this->data)),
+			'<h1>Mark Sheepkeeper</h1>'
+		);
+		$this->assertEqual(
+			$this->Html->tag('h1', '{Friends.0.name} {Friends.0.surname}', array('data' => $this->data)),
+			'<h1>Silvy Smalltrill</h1>'
+		);
+		$this->assertEqual(
+			$this->Html->tag('p', '{User.name} has {Friends|count} friends.', array('data' => $this->data)),
+			'<p>Mark has 3 friends.</p>'
+		);
+		// dataKey data context modificator
+		$this->assertEqual(
+			$this->Html->tag('p', '{name} {surname}', array('data' => $this->data, 'dataKey' => 'User')),
+			'<p>Mark Sheepkeeper</p>'
+		);
+		// noble conditionak keys
+		$this->assertEqual(
+			$this->Html->tag('p', 'has data', array('data' => $this->data, 'if' => 'dataNotEmpty')),
+			'<p>has data</p>'
+		);
+		
+		// conditionals
+		$this->assertNull($this->Html->tag('p', 'foo', array('data' => $this->data, 'if' => 'dataIsEmpty')));
+		$this->assertNull($this->Html->tag('p', 'foo', array('data' => $this->data, 'if' => array('dataKeyNotEmpty', 'Foo'))));
+		$this->assertNull($this->Html->tag('p', 'foo', array('data' => $this->data, 'if' => array('dataKeyIsEmpty', 'Friends'))));
+		
+	}
+	
+	
+	public function testDataRepeater() {
+		$html = $this->Html->tag(array(
+			'data' => $this->data,
+			'if' => 'notEmpty',
+			array(
+				array(
+					'tag' => 'h2',
+					'dataKey' => 'User',
+					'show' => '{name} {surname} has {Friends|count} friends:'
+				),
+				array(
+					'tag' => 'ul',
+					array(
+						'tag' => 'li',
+						'style' => 'background:#eee;',
+						'repeater' => 'Friends',
+						'oddItem' => array('$++style' => 'color:#444'),
+						'evenItem' => array('$++style' => 'color:#900'),
+						'{__$.di} - {name} {surname}'
+					)
+				)
+			)
+		));
+		
+		$this->assertContains('<div><h2>Mark Sheepkeeper has 3 friends:</h2><ul>', $html);
+		$this->assertContains('<li style="background:#eee;color:#900">2 - Phil Sheepkeeper</li>', $html);
+		$this->assertContains('<li style="background:#eee;color:#444">3 - Mark Waste</li>', $html);
+		
 	}
 	
 }
