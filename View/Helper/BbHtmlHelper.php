@@ -42,6 +42,7 @@ class BbHtmlHelper extends HtmlHelper {
 		parent::__construct($View, $settings);
 		BB::registerXtag('image', array($this, 'xtagImage'));
 		BB::registerXtag('link', array($this, 'xtagLink'));
+		BB::registerXtag('list', array($this, 'xtagList'));
 	}
 
 
@@ -108,21 +109,37 @@ class BbHtmlHelper extends HtmlHelper {
 			// not empty list will cycle each item
 			if (!empty($options['repeater']) && BB::isVector($options['repeater'])) {
 				$repeater = $options['repeater'];
-				$repeaterOdd = $options['oddItem'];
-				$repeaterEven = $options['evenItem'];
+				$repeaterOdd = BB::setDefaultAttrs($options['oddItem']);
+				$repeaterEven = BB::setDefaultAttrs($options['evenItem']);
 				$options = BB::clear($options, array('repeater', 'oddItem', 'evenItem'), false);
+				
 				ob_start();
 				foreach ($repeater as $i=>$repeaterItem) {
+					
 					$itemData = array('$__data' => $repeaterItem);
-					$itemData['$__data']['__$'] = array(
-						'i' => $i,
-						'di' => ($i+1),
-						'type' => ($i%2)?'even':'odd',
-						'even' => ($i%2)?true:false,
-						'odd' => ($i%2)?false:true,
-					);
+					if (is_array($itemData['$__data'])) {
+						$itemData['$__data']['__$'] = array(
+							'i' => $i,
+							'di' => ($i+1),
+							'type' => ($i%2)?'even':'odd',
+							'even' => ($i%2)?true:false,
+							'odd' => ($i%2)?false:true,
+						);
+					}
+					
+					// build item options with even/odd attributes
 					$itemOptions = BB::extend($options, ($i%2)?$repeaterEven:$repeaterOdd, $itemData);
-					echo $this->tag($name, $text, $itemOptions);
+					
+					// item's content is replaced by 'data' set to implement
+					// a list of sub-configuration tags
+					if (!empty($text) && $text === '$__item__$') {
+						echo $this->tag($name, $repeaterItem, BB::clear($itemOptions, 'data', false));
+					
+					// item's content is always the same teplate or data
+					// structure and inherits 'data' item as 'data' attrinute
+					} else {
+						echo $this->tag($name, $text, $itemOptions);
+					}
 				}
 				return ob_get_clean();
 			// empty list return nothing
@@ -191,7 +208,7 @@ class BbHtmlHelper extends HtmlHelper {
 		
 		// Prevent empty tags
 		if (empty($text) && $options['allowEmpty'] !== true) {
-			if (!in_array($name, explode(',', $options['allowEmpty']))) return;
+			if ($options['allowEmpty'] === false || !in_array($name, explode(',', $options['allowEmpty']))) return;
 		}
 		
 		// xTag: render
@@ -361,6 +378,34 @@ class BbHtmlHelper extends HtmlHelper {
 					'alt' => is_string($options['src']) ? $options['src'] : Router::url($options['src'])
 				);
 				return $this->image($options['src'], BB::extend($mandatory, BB::clear($options, $clear)));
+		}
+	}
+	
+	public function xtagList($mode, $name, $text, $options) {
+		switch ($mode) {
+			case 'options':
+				
+				$items = array();
+				if (isset($options['items'])) {
+					$items = $options['items'];
+				} elseif (BB::isVector($text)) {
+					$items = $text;
+				}
+				
+				$options = BB::extend(array(
+					'evenItem' => null,
+					'oddItem' => null
+				), $options);
+				
+				$text = array(
+					'tag' => 'li',
+					'repeater' => $items,
+					'content' => '$__item__$',
+					'evenItem' => $options['evenItem'],
+					'oddItem' => $options['oddItem']
+				);
+				
+				return array('ul', $text, BB::clear($options, array('items', 'oddItem', 'evenItem'), false));
 		}
 	}
 	

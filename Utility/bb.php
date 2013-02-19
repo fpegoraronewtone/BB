@@ -591,6 +591,23 @@ class BB {
 		}
 	}
 	
+	public static function setDefaultAttrsId($data = array(), $defaults = array()) {
+		// extends tag default values with custom given defaults
+		$defaults = BB::extend(array(
+			'id' => '',
+			'class' => '',
+			'style' => ''
+		), $defaults);
+		
+		if (is_array($data)) {
+			return self::setDefaults($data, $defaults);
+		} elseif (strpos($data, ':') !== false) {
+			return self::setDefaults($data, $defaults, 'style');
+		} else {
+			return self::setDefaults($data, $defaults, 'id');
+		}
+	}
+	
 	
 	
 	
