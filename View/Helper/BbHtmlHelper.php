@@ -14,10 +14,37 @@ class BbHtmlHelper extends HtmlHelper {
 	 */
 	public $allowEmptyTags = 'span,td,th,i,b,img,input,iframe';
 	
+	protected $_tagInteralOptions = array(
+		'xtag' => null,
+		'allowEmpty' => '',
+		// conditional options
+		'if' => true,
+		'else' => null,
+		// append/prepend contents
+		'prepend' => '',
+		'append' => '',
+		// options to templating with tag's text
+		'data' => array(),
+		'dataKey' => null,
+		'dataOptions' => array(),
+		// options to repeat a tag through a dataset
+		'repeater' => '$__repeater__$',
+		'oddItem' => array(),
+		'evenItem' => array()
+	);
 	
-	public function count($v) {return count($v);}
-	public function pad($v) {return "000$v";}
 	
+	/**
+	 * Constructor
+	 * used to register xtags
+	 */
+	public function __construct(View $View, $settings = array()) {
+		parent::__construct($View, $settings);
+		BB::registerXtag('image', array($this, 'xtagImage'));
+		BB::registerXtag('link', array($this, 'xtagLink'));
+	}
+
+
 	/**
 	 * CakePHP Override
 	 * implement a full or partial array configuration to nested tags by
@@ -50,21 +77,13 @@ class BbHtmlHelper extends HtmlHelper {
 		}
 		
 		// Apply default internal options to create complex behaviors
-		$options = BB::setDefaultAttrs($options, $internalOptions = array(
-			'allowEmpty' => $this->allowEmptyTags,
-			'if' => true,
-			'else' => null,
-			'prepend' => '',
-			'append' => '',
-			// options to templating with tag's text
-			'data' => array(),
-			'dataKey' => null,
-			'dataOptions' => array(),
-			// options to repeat a tag through a dataset
-			'repeater' => '$__repeater__$',
-			'oddItem' => array(),
-			'evenItem' => array()
-		));
+		$this->_tagInteralOptions['allowEmpty'] = $this->allowEmptyTags;
+		$options = BB::setDefaultAttrs($options, $this->_tagInteralOptions);
+		
+		// xTag: make options
+		if (!empty($options['xtag'])) {
+			list($name, $text, $options) = BB::xtagCallback('options', $options['xtag'], $name, $text, $options);
+		}
 		
 		// $dataKey filter a subset of orignal dynamic data to reduce
 		// data propagation to required tree only
@@ -129,6 +148,13 @@ class BbHtmlHelper extends HtmlHelper {
 			}
 		}
 		
+		// xTag: beforeRender
+		if (!empty($options['xtag'])) {
+			$xtag = BB::xtagCallback('beforeRender', $options['xtag'], $name, $text, $options);
+			if (!is_array($xtag) && !is_null($xtag)) return $xtag;
+			if (is_array($xtag)) list($name, $text, $options) = $xtag;
+		}
+		
 		// $text as Array means sub-tags to be rendered
 		// sub items inherith dynamic data and dataOptions to be able to
 		// render sub-templates
@@ -168,6 +194,13 @@ class BbHtmlHelper extends HtmlHelper {
 			if (!in_array($name, explode(',', $options['allowEmpty']))) return;
 		}
 		
+		// xTag: render
+		if (!empty($options['xtag'])) {
+			$xtag = BB::xtagCallback('render', $options['xtag'], $name, $text, $options);
+			if (!is_array($xtag) && !is_null($xtag)) return $xtag;
+			if (is_array($xtag)) list($name, $text, $options) = $xtag;
+		}
+		
 		// prepend - append content
 		if (!empty($options['prepend'])) {
 			if (is_array($options['prepend'])) {
@@ -184,9 +217,16 @@ class BbHtmlHelper extends HtmlHelper {
 			}
 		}
 		
+		// xTag: afterRender
+		if (!empty($options['xtag'])) {
+			$xtag = BB::xtagCallback('afterRender', $options['xtag'], $name, $text, $options);
+			if (!is_array($xtag) && !is_null($xtag)) return $xtag;
+			if (is_array($xtag)) list($name, $text, $options) = $xtag;
+		}
+		
 		// super::tag() with cleaned options array
 		// "div" tag is applied as default tag type.
-		return parent::tag(!empty($name)?$name:'div', $text, BB::clear($options, array_keys($internalOptions)));
+		return parent::tag(!empty($name)?$name:'div', $text, BB::clear($options, array_keys($this->_tagInteralOptions)));
 	}
 	
 	protected function _tagWithArrayConfig($options) {
@@ -278,11 +318,51 @@ class BbHtmlHelper extends HtmlHelper {
 			}
 		} else {
 			return $res;
-		}
-		
+		}	
 	}
 	
 	
 	
+	
+	/**
+	 * xTag - Link
+	 */
+	public function xtagLink($mode, $name, $text, $options) {
+		switch ($mode) {
+			case 'options':
+				return array($name, $text, BB::extend(array(
+					'href' => '',
+					'escape' => false
+				), $options));
+			case 'render':
+				$clear = BB::extend(array_keys($this->_tagInteralOptions), array(
+					'href'
+				));
+				$mandatory = array(
+					'title' => ''
+				);
+				return $this->link($text, $options['href'], BB::extend($mandatory, BB::clear($options, $clear)));
+		}
+	}
+	
+	public function xtagImage($mode, $name, $text, $options) {
+		switch ($mode) {
+			case 'options':
+				return array($name, $text, BB::extend(array(
+					'src' => ''
+				), $options, array(
+					'allowEmpty' => true
+				)));
+			case 'render':
+				$clear = BB::extend(array_keys($this->_tagInteralOptions), array(
+					'src'
+				));
+				$mandatory = array(
+					'alt' => is_string($options['src']) ? $options['src'] : Router::url($options['src'])
+				);
+				return $this->image($options['src'], BB::extend($mandatory, BB::clear($options, $clear)));
+		}
+	}
+	
+	
 }
-

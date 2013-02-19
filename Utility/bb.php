@@ -13,6 +13,8 @@ define('BB_CALLBACK_OPT', 'BB_CALLBACK_OPT');
 
 class BB {
 
+	protected static $_xtags = array();	
+	
 	public static function version() {
 		return '1.0.0';
 	}
@@ -852,6 +854,27 @@ class BB {
 		}
 		
 		return $results;
+	}
+	
+	
+	
+	
+	
+	
+	/**
+	 * xTag Support
+	 */
+	
+	public static function registerXtag($xname, $callback) {
+		self::$_xtags[$xname] = $callback;
+	}
+	
+	public static function xtagCallback($callbackName, $xname, $name, $text, $options) {
+		if (array_key_exists($xname, self::$_xtags)) {
+			return BB::callback(self::$_xtags[$xname], $callbackName, $name, $text, $options);
+		} else {
+			return array($name, $text, $options);
+		}
 	}
 	
 	
