@@ -66,9 +66,8 @@ class BbHtmlHelper extends HtmlHelper {
 	 * CakePHP Overrides
 	 * CSS include string is made by CakePHP class.
 	 * this method pre-manipulate params to add:
-	 * - conditional CSS tags
+	 *
 	 * - compile and minify LESS sources
-	 * - by default view's css are appended AFTER layout's css!
 	 */
 	public function css($path, $rel = null, $options = array()) {
 		
@@ -78,26 +77,71 @@ class BbHtmlHelper extends HtmlHelper {
 			$rel = null;
 		}
 		
+		// shift "rel" attribute to options
+		$options['rel'] = $rel;
+		
+		return $this->_assetBlock('css', $path, $options, function($_this, $itemName, $itemOptions, $options) {
+			
+			// try compile LESS source - if any compatible LessObject installed
+			$_this->_LessObject->compile($itemName);
+			
+			// check for request CSS to exists
+			if (!file_exists($_this->BbUtility->assetPath($itemName, array('pathPrefix' => CSS_URL, 'ext' => '.css')))) {
+				return false;
+			}
+			
+			// render single item
+			return $_this->_parent->css($itemName, $options['rel'], BB::clear($itemOptions, 'if'));
+		});
+		
+	}
+	
+	
+	/**
+	 * CakePHP Overrides
+	 * 
+	 */
+	public function script($url, $options = array()) {
+		
+		return $this->_assetBlock('script', $url, $options, function($_this, $itemName, $itemOptions) {
+			return $_this->_parent->script($itemName, BB::clear($itemOptions, 'if'));
+		});
+		
+	}
+	
+	/**
+	 * Shared logic - css() and script() - to build a block of assets
+	 * 
+	 * 
+	 * - conditional CSS tags
+	 * - by default view's assets are appended AFTER layout's assets!
+	 */
+	protected function _assetBlock($block, $asset, $options, $callback) {
+		
 		// apply default values 
 		$options = BB::setDefaults($options, array(
 			'if' => null,
 			'prepend' => true,
-			'inline' => null
+			'inline' => true
 		), array(
 			'boolean' => 'inline',
 			'else' => 'if'
 		));
 		
-		// single css to array conversion
-		if (!is_array($path)) {
-			$path = array($path);
+		// single asset to array conversion
+		if (!is_array($asset)) {
+			$asset = array($asset);
 		}
 		
 		// compose per-item default options
 		$_options = BB::clear($options, array('inline', 'block', 'prepend'));
 		
+		if (empty($this->_parent)) {
+			$this->_parent = new HtmlHelper($this->_View);
+		}
+		
 		$blockHtml = '';
-		foreach ($path as $itemName => $itemOptions) {
+		foreach ($asset as $itemName => $itemOptions) {
 			if (is_numeric($itemName)) {
 				$itemName = $itemOptions;
 				$itemOptions = array();
@@ -109,11 +153,8 @@ class BbHtmlHelper extends HtmlHelper {
 				'inline' => true,
 			));
 			
-			// try compile LESS source - if any compatible LessObject installed
-			$this->_LessObject->compile($itemName);
-			
-			// render single item
-			$itemHtml = parent::css($itemName, $rel, BB::clear($itemOptions, 'if'));
+			$itemHtml = BB::callback($callback, $this, $itemName, $itemOptions, $options);
+			if ($itemHtml === false) continue;
 			
 			if (!empty($itemOptions['if'])) {
 				$itemHtml = '<!--[if ' . $itemOptions['if'] . ']>' . $itemHtml . '<![endif]-->';
@@ -125,7 +166,7 @@ class BbHtmlHelper extends HtmlHelper {
 		
 		// inherited code - default block name
 		if (!$options['inline'] && empty($options['block'])) {
-			$options['block'] = __FUNCTION__;
+			$options['block'] = $block;
 		}
 		
 		// inherited code - output or append to block?
