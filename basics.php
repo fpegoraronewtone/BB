@@ -89,6 +89,23 @@ function bbAvgReset() {
 
 
 
+/**
+ * This is a generic "do nothing" function useful as callback default value.
+ */
+if (!function_exists('foo')) {
+	function foo() {}
+}
+
+/**
+ * This is an empty class with a catch all method declared.
+ * It may be useful for dependency injection defaults
+ */
+if (!class_exists('__EMPTY_CLASS__')) {
+	class __EMPTY_CLASS__ {
+		public function __call($method, $args) {}
+	}
+}
+
 
 
 

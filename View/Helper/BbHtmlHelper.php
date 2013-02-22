@@ -7,7 +7,14 @@
  */
 App::import('View/Helper', 'HtmlHelper');
 
+
 class BbHtmlHelper extends HtmlHelper {
+	
+	public $helpers = array(
+		'BB.BbUtility'
+	);
+	
+	protected $_LessObject = null;
 	
 	/**
 	 * list all tags who're allowed to exists with an empty value by default
@@ -43,6 +50,97 @@ class BbHtmlHelper extends HtmlHelper {
 		BB::registerXtag('image', array($this, 'xtagImage'));
 		BB::registerXtag('link', array($this, 'xtagLink'));
 		BB::registerXtag('list', array($this, 'xtagList'));
+		
+		// dependency injection - LessCss Compiler
+		// Html::css() is able to compile .less sources only if 
+		// BbLess helper was found inside View object
+		if (!empty($this->_View->BbLess)) {
+			$this->_LessObject = $this->_View->BbLess;
+		} else {
+			$this->_LessObject = new __EMPTY_CLASS__;
+		}
+	}
+	
+	
+	/**
+	 * CakePHP Overrides
+	 * CSS include string is made by CakePHP class.
+	 * this method pre-manipulate params to add:
+	 * - conditional CSS tags
+	 * - compile and minify LESS sources
+	 * - by default view's css are appended AFTER layout's css!
+	 */
+	public function css($path, $rel = null, $options = array()) {
+		
+		// 2 params mode intercepting if 2nd param is $rel or $options
+		if ((is_bool($rel) || is_array($rel)) && func_num_args() == 2) {
+			$options = $rel;
+			$rel = null;
+		}
+		
+		// apply default values 
+		$options = BB::setDefaults($options, array(
+			'if' => null,
+			'prepend' => true,
+			'inline' => null
+		), array(
+			'boolean' => 'inline',
+			'else' => 'if'
+		));
+		
+		// single css to array conversion
+		if (!is_array($path)) {
+			$path = array($path);
+		}
+		
+		// compose per-item default options
+		$_options = BB::clear($options, array('inline', 'block', 'prepend'));
+		
+		$blockHtml = '';
+		foreach ($path as $itemName => $itemOptions) {
+			if (is_numeric($itemName)) {
+				$itemName = $itemOptions;
+				$itemOptions = array();
+			}
+			
+			// default item options
+			$itemOptions = BB::extend($_options, BB::set($itemOptions, 'if'), array(
+				'$__overrides__$' => array('block'),
+				'inline' => true,
+			));
+			
+			// try compile LESS source - if any compatible LessObject installed
+			$this->_LessObject->compile($itemName);
+			
+			// render single item
+			$itemHtml = parent::css($itemName, $rel, BB::clear($itemOptions, 'if'));
+			
+			if (!empty($itemOptions['if'])) {
+				$itemHtml = '<!--[if ' . $itemOptions['if'] . ']>' . $itemHtml . '<![endif]-->';
+			}
+			
+			$blockHtml.= "\n" . $itemHtml;
+			
+		}
+		
+		// inherited code - default block name
+		if (!$options['inline'] && empty($options['block'])) {
+			$options['block'] = __FUNCTION__;
+		}
+		
+		// inherited code - output or append to block?
+		if (empty($options['block'])) {
+			return $blockHtml;
+		} else {
+			// prepend - view's css goes AFTER layout's css!
+			if ($options['prepend']) {
+				$block = $this->_View->fetch($options['block']);
+				$this->_View->assign($options['block'], $blockHtml . $block);
+			} else {
+				$this->_View->append($options['block'], $blockHtml);
+			}
+		}
+		
 	}
 
 
@@ -135,6 +233,27 @@ class BbHtmlHelper extends HtmlHelper {
 					if (!empty($text) && $text === '$__item__$') {
 						echo $this->tag($name, $repeaterItem, BB::clear($itemOptions, 'data', false));
 					
+					// repeater content as callable method
+					// callable params are:
+					// - $_View (context)
+					// - $i (iterator)
+					// - $repeaterItem
+					// - $itemOptions
+					// - $conteiner Options
+					// 
+					// callback should return STRING as content for item tag
+					// or a complete tag configuration array to extends 
+					// item settings
+					// 
+					// @TODO: write tests!
+					} elseif (is_callable($text)) {
+						$tmp = BB::callback($text, $this->_View, $i, $repeaterItem, $itemOptions, $options);
+						if (is_array($tmp)) {
+							echo $this->tag(BB::extend(array('tag' => $name), $itemOptions, $tmp));
+						} else {
+							echo $this->tag($name, $tmp, $itemOptions);
+						}
+						
 					// item's content is always the same teplate or data
 					// structure and inherits 'data' item as 'data' attrinute
 					} else {
@@ -145,6 +264,17 @@ class BbHtmlHelper extends HtmlHelper {
 			// empty list return nothing
 			} else {
 				return;
+			}
+		}
+		
+		// callable content logic
+		// @TODO: write tests!
+		if (is_callable($text)) {
+			$tmp = BB::callback($text, $this->_View, $name, $options);
+			if (is_array($tmp)) {
+				$text = $this->tag(BB::extend(array('tag' => $name), $options, $tmp));
+			} else {
+				$text = $this->tag($name, $tmp, $options);
 			}
 		}
 		
@@ -180,7 +310,15 @@ class BbHtmlHelper extends HtmlHelper {
 			ob_start();
 			if (BB::isVector($text)) {
 				foreach($text as $childOptions) {
-					if (is_array($childOptions)) {
+					
+					// callable content item
+					// should return a string or a full configuration tag object
+					if (is_callable($childOptions)) {
+						$childOptions = BB::callback($childOptions, $this->_View);
+						if (is_array($childOptions)) $childOptions = $this->tag($childOptions);
+					
+					// array content item
+					} elseif (is_array($childOptions)) {
 						// fix - accept last integer key as content
 						$tmp = array_keys($childOptions);
 						if (is_numeric(array_pop($tmp))) $childOptions['content'] = array_pop($childOptions);
@@ -394,13 +532,15 @@ class BbHtmlHelper extends HtmlHelper {
 				
 				$options = BB::extend(array(
 					'evenItem' => null,
-					'oddItem' => null
+					'oddItem' => null,
 				), $options);
+				
+				if (empty($text)) $text = '$__item__$';
 				
 				$text = array(
 					'tag' => 'li',
 					'repeater' => $items,
-					'content' => '$__item__$',
+					'content' => $text,
 					'evenItem' => $options['evenItem'],
 					'oddItem' => $options['oddItem']
 				);

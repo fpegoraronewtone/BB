@@ -345,6 +345,7 @@ class BBHtmlTagTest extends CakeTestCase {
 			$this->Html->tag('p', '{name} {surname}', array('data' => $this->data, 'dataKey' => 'User')),
 			'<p>Mark Sheepkeeper</p>'
 		);
+		
 		// noble conditionak keys
 		$this->assertEqual(
 			$this->Html->tag('p', 'has data', array('data' => $this->data, 'if' => 'dataNotEmpty')),
@@ -366,8 +367,7 @@ class BBHtmlTagTest extends CakeTestCase {
 			array(
 				array(
 					'tag' => 'h2',
-					'dataKey' => 'User',
-					'show' => '{name} {surname} has {Friends|count} friends:'
+					'show' => '{User.name} {User.surname} has {Friends|count} friends:'
 				),
 				array(
 					'tag' => 'ul',
@@ -382,7 +382,6 @@ class BBHtmlTagTest extends CakeTestCase {
 				)
 			)
 		));
-		
 		$this->assertContains('<div><h2>Mark Sheepkeeper has 3 friends:</h2><ul>', $html);
 		$this->assertContains('<li style="background:#eee;color:#900">2 - Phil Sheepkeeper</li>', $html);
 		$this->assertContains('<li style="background:#eee;color:#444">3 - Mark Waste</li>', $html);

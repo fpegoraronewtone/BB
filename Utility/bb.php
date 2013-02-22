@@ -668,6 +668,10 @@ class BB {
 			} elseif (Hash::check($data, $var['path'])) {
 				$val = Hash::extract($data, $var['path']) ;
 				if (empty($val)) $val = '';
+			
+			// direct value
+			} else {
+				$val = $var['path'];
 			}
 			
 			// pass throught multiple modifier
