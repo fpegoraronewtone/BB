@@ -38,7 +38,7 @@ class BbUtilityHelper extends AppHelper {
 		// The "base" points to the optimized folder
 		// The "fallback" points to the plugin package folder
 		$base = $fallback = WWW_ROOT;
-		if ( !empty($plugin) && BB::keyExists('plugin.'.$plugin.'.path') ) {
+		if ( !empty($plugin) && BB::check('plugin.'.$plugin.'.path') ) {
 			$base 		= $base . strtolower($plugin) . DS;
 			$fallback 	= BB::read('plugin.'.$plugin.'.path') . 'webroot' . DS;
 		}
