@@ -7,7 +7,7 @@
  */
 
 // Import always used libraries:
-App::import('', 'BB.basics');
+require_once(App::pluginPath('BB').'basics.php');
 
 // Plugins Auto Loading Utility
-App::import('', 'BB.plugins');
+require_once(App::pluginPath('BB').'plugins.php');

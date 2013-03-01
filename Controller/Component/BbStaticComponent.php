@@ -22,6 +22,11 @@ class BbStaticComponent extends Component {
 		parent::__construct($collection, BB::extend($this->settings, $settings));
 	}
 	
+	// Inject BbStaticHelper into controller's helpers
+	public function initialize(Controller $Controller) {
+		$this->Controller->helpers[] = 'BB.BbStatic';
+	}
+	
 	/**
 	 * Test for display action to exists inside Controller.
 	 * if action does not exists then auto-render static view in place of
@@ -63,7 +68,7 @@ class BbStaticComponent extends Component {
 		// export path info to the view
 		$this->Controller->set(compact('path'));
 		
-		// try to render translated view
+		// try to render translated view - if a lang param exists!
 		if (isset($this->Controller->request->params[$this->settings['lang']]) && !empty($this->Controller->request->params[$this->settings['lang']])) {
 			$lpath = BB::extend(array($this->Controller->request->params[$this->settings['lang']]), $path);
 			$lpath = $this->getViewPath($lpath);

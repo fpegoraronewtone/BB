@@ -114,7 +114,7 @@ if (!class_exists('__EMPTY_CLASS__')) {
 App::import('Utility', 'Folder');
 
 // Import hard dependencies:
-App::import('Utility', 'BB.bb');
+App::import('Utility', 'BB.BB');
 
 
 // Declare lazy loading dependencies:

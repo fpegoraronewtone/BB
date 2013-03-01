@@ -5,8 +5,8 @@
  *
  * @author mpeg
  */
-class BbUtilityHelper extends AppHelper {
-
+class BbCoreHelper extends AppHelper {
+	
 	/**	
 	 * CakePower Inherited
 	 * Utility Method
@@ -67,5 +67,77 @@ class BbUtilityHelper extends AppHelper {
 	
 	}
 	
+	
+	/**
+	 * Search for a named param to exists in a lot of places:
+	 * - request's params
+	 * - request's named
+	 * - request's data
+	 * - $_POST
+	 * - $_GET
+	 * - CakePhp Session
+	 * - $_SESSION
+	 * - $_COOKIE
+	 */
+	public function getParam($name = '') {
+		if (empty($name)) return $name;
+		if (isset($this->_View->request->params[$name])) {
+			return $this->_View->request->params[$name];
+		}
+		if (isset($this->_View->request->params['named'][$name])) {
+			return $this->_View->request->params['named'][$name];
+		}
+		if (isset($this->_View->request->data[$name])) {
+			return $this->_View->request->data[$name];
+		}
+		if (isset($_POST[$name])) {
+			return $_POST[$name];
+		}
+		if (isset($_GET[$name])) {
+			return $_GET[$name];
+		}
+		/*
+		if ($this->_Controller->Session->Check($name)) {
+			return $this->_Controller->Session->Read($name);
+		}
+		*/
+		if (isset($_SESSION[$name])) {
+			return $_SESSION[$name];
+		}
+		if (isset($_COOKIE[$name])) {
+			return $_COOKIE[$name];
+		}
+	}
+	
+	
+	/**
+	 * Transfrom a generic string into a comma separated keywords meta tag
+	 * string.
+	 * 
+	 * empty words or words less than 3 chars are skipped.
+	 * you can give a dictionary of words to skip as 3rd params
+	 * you can also give a BB::callback() to skip words
+	 */
+	public static function keywords($str = '', $callback = null) {
+		if (empty($str)) return '';
+		$keywords = array();
+		foreach(explode(" ", strtolower($str)) as $word) {
+			$word = trim($word);
+			if (empty($word) || strlen($word) <= 2) {
+				continue;
+			}
+			if (is_callable($callback)) {
+				if (!BB::callback($callback, $word)) {
+					continue;
+				}
+			} elseif (is_array($callback)) {
+				if (in_array($word, $callback)) {
+					continue;
+				}
+			}
+			$keywords[] = $word;
+		}
+		return implode(', ', $keywords);
+	}
 	
 }

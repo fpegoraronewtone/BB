@@ -11,7 +11,7 @@ App::import('View/Helper', 'HtmlHelper');
 class BbHtmlHelper extends HtmlHelper {
 	
 	public $helpers = array(
-		'BB.BbUtility'
+		'BB.BbCore'
 	);
 	
 	protected $_LessObject = null;
@@ -24,6 +24,8 @@ class BbHtmlHelper extends HtmlHelper {
 	protected $_tagInteralOptions = array(
 		'xtag' => null,
 		'allowEmpty' => '',
+		// send options to children
+		'defaults' => array(),
 		// conditional options
 		'if' => true,
 		'else' => null,
@@ -77,6 +79,16 @@ class BbHtmlHelper extends HtmlHelper {
 			$rel = null;
 		}
 		
+		// apply default values 
+		$options = BB::setDefaults($options, array(
+			'if' => null,
+			'prepend' => true,
+			'inline' => true
+		), array(
+			'boolean' => 'inline',
+			'else' => 'if'
+		));
+		
 		// shift "rel" attribute to options
 		$options['rel'] = $rel;
 		
@@ -86,8 +98,8 @@ class BbHtmlHelper extends HtmlHelper {
 			$_this->_LessObject->compile($itemName);
 			
 			// check for request CSS to exists
-			if (!file_exists($_this->BbUtility->assetPath($itemName, array('pathPrefix' => CSS_URL, 'ext' => '.css')))) {
-				return false;
+			if (!file_exists($_this->BbCore->assetPath($itemName, array('pathPrefix' => CSS_URL, 'ext' => '.css')))) {
+				#return false;
 			}
 			
 			// render single item
@@ -298,6 +310,7 @@ class BbHtmlHelper extends HtmlHelper {
 					// item's content is always the same teplate or data
 					// structure and inherits 'data' item as 'data' attrinute
 					} else {
+						
 						echo $this->tag($name, $text, $itemOptions);
 					}
 				}
@@ -347,10 +360,11 @@ class BbHtmlHelper extends HtmlHelper {
 		// sub items inherith dynamic data and dataOptions to be able to
 		// render sub-templates
 		if (is_array($text)) {
-			$dataExtend = array('data' => $options['data'], 'dataOptions' => $options['dataOptions']);
+			$dataExtend = BB::extend($options['defaults'], array('data' => $options['data'], 'dataOptions' => $options['dataOptions']));
 			ob_start();
 			if (BB::isVector($text)) {
 				foreach($text as $childOptions) {
+					
 					
 					// callable content item
 					// should return a string or a full configuration tag object
@@ -380,7 +394,8 @@ class BbHtmlHelper extends HtmlHelper {
 		
 		// Parse text content as template for dynamic data
 		// default context is View's class
-		if (!empty($options['data']) && BB::isAssoc($options['data'])) {
+		if (!empty($options['data']) && (BB::isAssoc($options['data']) || $options['data'] === true)) {
+			if ($options['data'] === true) $options['data'] = array();
 			$options['dataOptions'] = BB::extend(array('context' => $this->_View), $options['data']);
 			$text = BB::tpl($text, $options['data'], $options['dataOptions']);
 		}
@@ -573,7 +588,7 @@ class BbHtmlHelper extends HtmlHelper {
 				
 				$options = BB::extend(array(
 					'evenItem' => null,
-					'oddItem' => null,
+					'oddItem' => null
 				), $options);
 				
 				if (empty($text)) $text = '$__item__$';
@@ -583,7 +598,8 @@ class BbHtmlHelper extends HtmlHelper {
 					'repeater' => $items,
 					'content' => $text,
 					'evenItem' => $options['evenItem'],
-					'oddItem' => $options['oddItem']
+					'oddItem' => $options['oddItem'],
+					'defaults' => $options['defaults']
 				);
 				
 				return array('ul', $text, BB::clear($options, array('items', 'oddItem', 'evenItem'), false));
