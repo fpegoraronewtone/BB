@@ -231,6 +231,7 @@ class BbHtmlHelper extends HtmlHelper {
 		// Apply default internal options to create complex behaviors
 		$this->_tagInteralOptions['allowEmpty'] = $this->allowEmptyTags;
 		$options = BB::setDefaultAttrs($options, $this->_tagInteralOptions);
+		$options['defaults'] = BB::setDefaultAttrs($options['defaults']);
 		
 		// xTag: make options
 		if (!empty($options['xtag'])) {
@@ -571,7 +572,37 @@ class BbHtmlHelper extends HtmlHelper {
 				$mandatory = array(
 					'alt' => is_string($options['src']) ? $options['src'] : Router::url($options['src'])
 				);
-				return $this->image($options['src'], BB::extend($mandatory, BB::clear($options, $clear)));
+				
+				$src = $options['src'];
+				$options = BB::extend($mandatory, BB::clear($options, $clear));
+				
+				if (!empty($options['href'])) {
+					
+					$linkDefaults = array(
+						'href' => $options['href'],
+						'title' => '',
+						'rel' => '',
+						'target' => '',
+						'linkOptions' => array()
+					);
+					
+					$options = BB::extend($linkDefaults, $options);
+					$linkOptions = BB::setDefaultAttrs($options['linkOptions']);
+					
+					if (!empty($options['href']))	$linkOptions['href']	= $options['href'];
+					if (!empty($options['title']))	$linkOptions['title']	= $options['title'];
+					if (!empty($options['rel']))	$linkOptions['rel']		= $options['rel'];
+					if (!empty($options['target'])) $linkOptions['target']	= $options['target'];
+					$options = BB::clear($options, array_keys($linkDefaults));
+					
+					return $this->tag(BB::extend(array(
+						'xtag' => 'link',
+						'show' => $this->image($src, $options)
+					), $linkOptions));
+					
+				} else {
+					return $this->image($src, $options);
+				}
 		}
 	}
 	
