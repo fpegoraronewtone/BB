@@ -12,7 +12,7 @@ App::import('Vendor', 'BB.cssmin');
 class BbLessHelper extends AppHelper {
 	
 	public $helpers = array(
-		'BB.BbUtility'
+		'BB.BbCore'
 	);
 	
 	/**
@@ -43,8 +43,8 @@ class BbLessHelper extends AppHelper {
 			$LESS_URL = 'less/';
 		}
 		
-		$css_path = $this->BbUtility->assetPath($css, array('pathPrefix' => $CSS_URL, 'ext' => '.css', 'exists' => false));
-		$less_path = $this->BbUtility->assetPath($css, array('pathPrefix' => $LESS_URL, 'ext' => '.less', 'exists' => false));
+		$css_path = $this->BbCore->assetPath($css, array('pathPrefix' => $CSS_URL, 'ext' => '.css', 'exists' => false));
+		$less_path = $this->BbCore->assetPath($css, array('pathPrefix' => $LESS_URL, 'ext' => '.less', 'exists' => false));
 		
 		if (file_exists($less_path) && (!file_exists($css_path) || Configure::read('debug'))) {
 			$this->_compileFile($less_path, $css_path);

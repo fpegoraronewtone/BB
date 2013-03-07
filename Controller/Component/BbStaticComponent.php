@@ -9,7 +9,7 @@ class BbStaticComponent extends Component {
 	
 	public $settings = array(
 		'action'	=> 'display',
-		'lang'		=> 'lang',
+		'lang'		=> 'language',
 		'root'		=> null,
 		'home'		=> 'home',
 		'index'		=> 'index'
@@ -83,7 +83,6 @@ class BbStaticComponent extends Component {
 		} else {
 			return $this->Controller->render(implode('/', $path));
 		}
-		
 	}
 	
 	

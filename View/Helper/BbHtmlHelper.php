@@ -544,16 +544,19 @@ class BbHtmlHelper extends HtmlHelper {
 			case 'options':
 				return array($name, $text, BB::extend(array(
 					'href' => '',
+					'confirm' => '',
 					'escape' => false
 				), $options));
 			case 'render':
 				$clear = BB::extend(array_keys($this->_tagInteralOptions), array(
-					'href'
+					'href',
+					'confirm'
 				));
 				$mandatory = array(
 					'title' => ''
 				);
-				return $this->link($text, $options['href'], BB::extend($mandatory, BB::clear($options, $clear)));
+				$confirmMessage = $options['confirm'];
+				return $this->link($text, $options['href'], BB::extend($mandatory, BB::clear($options, $clear)), $confirmMessage);
 		}
 	}
 	

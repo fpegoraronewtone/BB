@@ -144,6 +144,7 @@ class BbStaticHelper extends AppHelper {
 	 * Fetch markdown blocks from delimiters inside given text
 	 */
 	public function parseMarkdown($str) {
+		
 		// search and parses markdown blocks
 		$start = '<!-- Markdown -->';
 		$end = '<!-- Markdown -->';
@@ -156,8 +157,17 @@ class BbStaticHelper extends AppHelper {
 			// apply template behavior to the md block
 			$md = BB::tpl($md, $this->_View->viewVars, array('context' => $this->_View));
 			
+			$html = $this->_View->Markdown->render($md);
+			
+			// trigger callback on loaded helpers
+			foreach ($this->_View->Helpers->loaded() as $helper) {	
+				if (method_exists($this->_View->{$helper}, 'bbStaticAfterMarkdown')) {
+					$html = BB::callback(array($this->_View->{$helper}, 'bbStaticAfterMarkdown'), $html);
+				}
+			}
+			
 			// replace parsed block
-			$str = str_replace($find, $this->_View->Markdown->render($md), $str);
+			$str = str_replace($find, $html, $str);
 		}
 		
 		return $str;
@@ -210,8 +220,8 @@ class BbStaticHelper extends AppHelper {
 	}
 	
 	// usefull with BB::tpl()
-	public function pageUrl2String($url) {
-		return $this->pageUrl($url, true);
+	public function pageUrl2String($url, $options = array()) {
+		return $this->pageUrl($url, true, $options);
 	}
 	
 	public function homeUrl() {
