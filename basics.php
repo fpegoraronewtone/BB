@@ -115,6 +115,7 @@ App::import('Utility', 'Folder');
 
 // Import hard dependencies:
 App::import('Utility', 'BB.BB');
+App::import('Utility', 'BB.BbMenu');
 
 
 // Declare lazy loading dependencies:

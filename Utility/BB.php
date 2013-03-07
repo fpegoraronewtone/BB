@@ -1,5 +1,4 @@
 <?php
-
 /**
  * BB - BlackBeard Core Plugin
  * 
@@ -386,7 +385,8 @@ class BB {
 			foreach (array_keys($b) as $key) {
 				
 				// reset key in $a
-				if (substr($key, 0, 3) == '$__') {
+				// ignore $__key__$ keys!
+				if (substr($key, 0, 3) == '$__' && substr($key, strlen($key)-3, 3) != '__$') {
 					$akey = substr($key, 3);
 					$a[$akey] = $b[$key];
 					continue;
@@ -481,7 +481,7 @@ class BB {
 			foreach (array_keys($b) as $key) {
 				
 				// reset key in $a
-				if (substr($key, 0, 3) == '$__') {
+				if (substr($key, 0, 3) == '$__' && substr($key, strlen($key)-3, 3) != '__$') {
 					$akey = substr($key, 3);
 					$a[$akey] = $b[$key];
 					continue;
