@@ -167,6 +167,13 @@ class BbMenu {
 		ddebug(self::tree($path, $recursive));
 	}
 	
+	public static function debug($path = '') {
+		debug(BB::read(self::_path($path)));
+	}
+	
+	public static function ddebug($path = '') {
+		ddebug(BB::read(self::_path($path)));
+	}
 	
 	
 	
@@ -228,10 +235,13 @@ class BbMenu {
 			$data = array('$__BbMenu__$' => BB::extend(self::$_defaults, $name));
 			// add sub menus - recursion to build sub items
 			if (!empty($menu)) {
-				if (!BB::isVector($menu)) {
-					$menu = array('item0' => $menu);
-				}
 				foreach ($menu as $key=>$val) {
+					if (!is_array($val)) {
+						$val = array(
+							'show' => $key,
+							'url' => $val
+						);
+					}
 					$data[$key] = self::_make($val);
 				}
 			}
@@ -248,6 +258,9 @@ class BbMenu {
 	}
 	
 	private static function _tree($data, $recursive) {
+		if (empty($data)) {
+			$data = array();
+		}
 		if ($recursive === true) {
 			$recursive = 99;
 		}
