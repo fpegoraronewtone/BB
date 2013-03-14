@@ -233,14 +233,21 @@ class BbHtmlHelper extends HtmlHelper {
 			}
 		}
 		
+		// xTag: before make options
+		if (!empty($options['xtag']) && $xtag = BB::xtagCallback('beforeOptions', $options['xtag'], $name, $text, $options)) {
+			if (is_string($xtag)) return $xtag;
+			list($name, $text, $options) = $xtag;
+		}
+		
 		// Apply default internal options to create complex behaviors
 		$this->_tagInteralOptions['allowEmpty'] = $this->allowEmptyTags;
 		$options = BB::setDefaultAttrs($options, $this->_tagInteralOptions);
 		$options['defaults'] = BB::setDefaultAttrs($options['defaults']);
 		
 		// xTag: make options
-		if (!empty($options['xtag'])) {
-			list($name, $text, $options) = BB::xtagCallback('options', $options['xtag'], $name, $text, $options);
+		if (!empty($options['xtag']) && $xtag = BB::xtagCallback('options', $options['xtag'], $name, $text, $options)) {
+			if (is_string($xtag)) return $xtag;
+			list($name, $text, $options) = $xtag;
 		}
 		
 		// $dataKey filter a subset of orignal dynamic data to reduce
@@ -356,10 +363,14 @@ class BbHtmlHelper extends HtmlHelper {
 		}
 		
 		// xTag: beforeRender
-		if (!empty($options['xtag'])) {
+		/*if (!empty($options['xtag'])) {
 			$xtag = BB::xtagCallback('beforeRender', $options['xtag'], $name, $text, $options);
 			if (!is_array($xtag) && !is_null($xtag)) return $xtag;
 			if (is_array($xtag)) list($name, $text, $options) = $xtag;
+		}*/
+		if (!empty($options['xtag']) && $xtag = BB::xtagCallback('beforeRender', $options['xtag'], $name, $text, $options)) {
+			if (is_string($xtag)) return $xtag;
+			list($name, $text, $options) = $xtag;
 		}
 		
 		// $text as Array means sub-tags to be rendered
@@ -412,10 +423,14 @@ class BbHtmlHelper extends HtmlHelper {
 		}
 		
 		// xTag: render
-		if (!empty($options['xtag'])) {
+		/*if (!empty($options['xtag'])) {
 			$xtag = BB::xtagCallback('render', $options['xtag'], $name, $text, $options);
 			if (!is_array($xtag) && !is_null($xtag)) return $xtag;
 			if (is_array($xtag)) list($name, $text, $options) = $xtag;
+		}*/
+		if (!empty($options['xtag']) && $xtag = BB::xtagCallback('render', $options['xtag'], $name, $text, $options)) {
+			if (is_string($xtag)) return $xtag;
+			list($name, $text, $options) = $xtag;
 		}
 		
 		// prepend - append content
@@ -435,10 +450,14 @@ class BbHtmlHelper extends HtmlHelper {
 		}
 		
 		// xTag: afterRender
-		if (!empty($options['xtag'])) {
+		/*if (!empty($options['xtag'])) {
 			$xtag = BB::xtagCallback('afterRender', $options['xtag'], $name, $text, $options);
 			if (!is_array($xtag) && !is_null($xtag)) return $xtag;
 			if (is_array($xtag)) list($name, $text, $options) = $xtag;
+		}*/
+		if (!empty($options['xtag']) && $xtag = BB::xtagCallback('afterRender', $options['xtag'], $name, $text, $options)) {
+			if (is_string($xtag)) return $xtag;
+			list($name, $text, $options) = $xtag;
 		}
 		
 		// super::tag() with cleaned options array
