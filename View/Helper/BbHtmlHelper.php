@@ -52,10 +52,15 @@ class BbHtmlHelper extends HtmlHelper {
 		BB::registerXtag('image', array($this, 'xtagImage'));
 		BB::registerXtag('link', array($this, 'xtagLink'));
 		BB::registerXtag('list', array($this, 'xtagList'));
-		
-		// dependency injection - LessCss Compiler
-		// Html::css() is able to compile .less sources only if 
-		// BbLess helper was found inside View object
+	}
+	
+	
+	/**
+	 * dependency injection - LessCss Compiler
+	 * Html::css() is able to compile .less sources only if 
+	 * BbLess helper was found inside View object
+	 */
+	public function beforeRender($viewFile) {
 		if (!empty($this->_View->BbLess)) {
 			$this->_LessObject = $this->_View->BbLess;
 		} else {
@@ -99,7 +104,7 @@ class BbHtmlHelper extends HtmlHelper {
 			
 			// check for request CSS to exists
 			if (!file_exists($_this->BbCore->assetPath($itemName, array('pathPrefix' => CSS_URL, 'ext' => '.css')))) {
-				#return false;
+				return false;
 			}
 			
 			// render single item
