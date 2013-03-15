@@ -14,6 +14,10 @@ if (!defined('BB_START')) {
 	define('BB_START', microtime());
 }
 
+if (!defined('ALL')) {
+	define('ALL', 'ALL');
+}
+
 
 /**
  * debug() then die.

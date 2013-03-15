@@ -24,7 +24,8 @@ class BbCoreComponent extends Component {
 		
 		// Inject BB's helpers extensions
 		$this->loadHelper(array(
-			'Html' => array('className' => 'BB.BbHtml')
+			'Html' => array('className' => 'BB.BbHtml'),
+			'Session' => array('className' => 'BB.BbSession')
 		));
 	}
 	
