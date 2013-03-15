@@ -556,6 +556,18 @@ class BB {
 		return $origin;
 	}
 	
+	public static function setStyle($origin = array(), $options = array()) {
+		
+		if (is_string($origin) && strpos($origin, ':') !== false) {
+			return array(
+				'style' => $origin
+			);
+		} else {
+			return self::set($origin, $options);
+		}
+		
+	}
+	
 	
 	
 	/**
