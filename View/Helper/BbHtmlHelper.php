@@ -52,6 +52,7 @@ class BbHtmlHelper extends HtmlHelper {
 		BB::registerXtag('image', array($this, 'xtagImage'));
 		BB::registerXtag('link', array($this, 'xtagLink'));
 		BB::registerXtag('list', array($this, 'xtagList'));
+		BB::registerXtag('table', array($this, 'xtagTable'));
 	}
 	
 	
@@ -662,6 +663,19 @@ class BbHtmlHelper extends HtmlHelper {
 				
 				return array('ul', $text, BB::clear($options, array('items', 'oddItem', 'evenItem'), false));
 		}
+	}
+	
+	public function xtagTable($mode, $name, $text, $options) {
+		
+		$options = BB::extend(array(
+			'helper' => 'BB.BbTable',
+			'data' => array()
+		), $options);
+		
+		$tableHelper = $this->_View->loadHelper($options['helper']);
+		$data = $options['data'];
+		
+		return $tableHelper->render($data, BB::clear($options, array('xtag', 'helper', 'data')));
 	}
 	
 	
