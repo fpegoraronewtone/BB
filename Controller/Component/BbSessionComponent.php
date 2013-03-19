@@ -40,45 +40,21 @@ class BbSessionComponent extends SessionComponent {
 
 	public function success() {
 		$options = $this->_notificationParams(func_get_args(), __('successMsg'));
-		
-		// AJAX
-		
-		// REST
-		
-		// CakePHP standard flash 'n rediret
 		$this->flash('success', $options);
 	}
 	
 	public function error() {
 		$options = $this->_notificationParams(func_get_args(), __('errorMsg'));
-		
-		// AJAX
-		
-		// REST
-		
-		// CakePHP standard flash 'n rediret
 		$this->flash('error', $options);
 	}
 	
 	public function warning() {
 		$options = $this->_notificationParams(func_get_args(), __('warningMsg'));
-		
-		// AJAX
-		
-		// REST
-		
-		// CakePHP standard flash 'n rediret
 		$this->flash('warning', $options);
 	}
 	
 	public function info() {
 		$options = $this->_notificationParams(func_get_args(), __('infoMsg'));
-		
-		// AJAX
-		
-		// REST
-		
-		// CakePHP standard flash 'n rediret
 		$this->flash('info', $options);
 	}
 	
@@ -103,31 +79,36 @@ class BbSessionComponent extends SessionComponent {
 		}
 		
 		// compose url and options array
-		$args = func_get_args();
-		$url = array_shift($args);
-		$msg = array_shift($args);
+		$args	= func_get_args();
+		$url	= array_shift($args);
+		$text	= array_shift($args);
 		
-		if (!is_array($msg)) {
+		if (!is_array($text)) {
 			$options = array(
-				'msg' => $msg,
+				'text'	=> $text,
 				'title' => array_shift($args),
-				'type' => array_shift($args)
+				'type'	=> array_shift($args)
 			);
+		} else {
+			$options = $text;
 		}
 		
 		$options = BB::extend(array(
-			'msg' => null,
+			'text'	=> null,
 			'title' => null,
-			'type' => 'info'
+			'type'	=> 'info'
 		), $options);
 		
 		// AJAX
+		$this->ajaxFlash(BB::extend(array(
+			'url' => $url
+		), $options));
 		
 		// REST
 		
 		// CakePHP standard request
-		if (!empty($options['msg'])) {
-			$this->flash($options['type'], $options['msg'], null, $options['title']);
+		if (!empty($options['text'])) {
+			$this->flash($options['type'], $options['text'], null, $options['title']);
 		}
 		
 		$this->_Controller->redirect($url);
@@ -142,9 +123,9 @@ class BbSessionComponent extends SessionComponent {
 	
 
 	
-// ------------------------------------------------------- //
-// ---[[   T Y P E D   F L A S H   M E S S A G E S   ]]--- //
-// ------------------------------------------------------- //
+// ------------------------------------------- //
+// ---[[   F L A S H   M E S S A G E S   ]]--- //
+// ------------------------------------------- //
 	
 	/**
 	 * $this->Session->flash('success', 'message', '/url', 'title')
@@ -157,28 +138,59 @@ class BbSessionComponent extends SessionComponent {
 		$type = array_shift($args);
 		
 		// make flash 'n redirect
-		$options = $this->_notificationParams($args, __($type.'Msg'));
-		$this->setFlash($options['msg'], 'default', BB::clear($options, array('msg', 'url')), $type );
-		
-		// fetch url to redirect
 		$options = BB::extend(array(
-			'url' => null,
-			'cancelUrl' => null,
-			'exitUrl' => null
-		), $options);
+			'url'		=> null,
+			'cancel'	=> null,
+			'exit'		=> null
+		), $this->_notificationParams($args, __($type.'Msg')));
 		
+		
+		// REDIRECT: fetch url to redirect
 		// intercepts multiple redirec typed by used form action
 		if (isset($_POST['form-action-cancel']) && !empty($options['cancel'])) {
 			$options['url'] = $options['cancel'];
 		}
-		
 		if (isset($_POST['form-action-save-and-exit']) && !empty($options['exit'])) {
 			$options['url'] = $options['exit'];
 		}
 		
+		// handle AJAX request to send JSON response
+		$this->ajaxFlash(BB::extend(array('type' => $type), BB::clear($options, array('cancel', 'exit'))));
+		
+		// set flash message
+		$this->setFlash($options['text'], 'default', BB::clear($options, array('text', 'url')), $type );
+		
+		// apply redirect url
 		if (!empty($options['url'])) {
 			$this->_Controller->redirect($options['url']);
 		}
+	}
+	
+	public function ajaxFlash($options) {
+		if (!$this->_Controller->request->is('ajax')) return;
+		
+		$options = BB::extend(array(
+			'forceRedirect' => isset($_POST['ajax-force-redirect'])
+		), $options);
+		
+		// compose absolute url to redirect then estimate if a 
+		if (!empty($options['url'])) {
+			$next = Router::url($options['url']);
+			if ($this->_Controller->request->here != $next || $options['forceRedirect']) {
+				$options['redirect'] = Router::url($options['url'], true);
+			}
+		}
+		
+		// JSON headers
+		header('Cache-Control: no-cache, must-revalidate');
+		header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+		header('Content-type: application/json');
+		
+		
+		echo json_encode(array(
+			'ajax' => BB::clear($options, 'url')
+		));
+		exit;
 	}
 	
 	
@@ -190,15 +202,19 @@ class BbSessionComponent extends SessionComponent {
 	
 	
 	/**
-	 * create a norification utility configuration object from
-	 * various kinfs o
+	 * create a notification utility configuration object from
+	 * various kind of inputs.
+	 * 
+	 * $params should contain a full configuration array at its first position.
+	 * $params should be a list of $text, $url, $options params
+	 * 
 	 */
 	protected function _notificationParams($params, $defaults) {
 		
 		$options = BB::extend(array(
-			'msg' => '',
-			'url' => ''
-		), BB::set($defaults, 'msg'));
+			'text'	=> '',
+			'url'	=> ''
+		), BB::set($defaults, 'text'));
 		
 		if (!empty($params)) {
 			if (is_array($params[0])) {
@@ -207,9 +223,9 @@ class BbSessionComponent extends SessionComponent {
 				while(count($params) < 3) {
 					$params[] = null;
 				}
-				list($msg, $url, $data) = $params;
-				if (!empty($msg)) {
-					$options['msg'] = $msg;
+				list($text, $url, $data) = $params;
+				if (!empty($text)) {
+					$options['text'] = $text;
 				}
 				$data = BB::set($data, 'title');
 				// "url" should contain redirect url and exit url!
