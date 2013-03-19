@@ -211,14 +211,16 @@ class BbSessionComponent extends SessionComponent {
 				if (!empty($msg)) {
 					$options['msg'] = $msg;
 				}
-				if (is_array($url)) {
-					$data = $url;
+				$data = BB::set($data, 'title');
+				// "url" should contain redirect url and exit url!
+				if (is_array($url) && (array_key_exists('url', $url) || array_key_exists('exit', $url))) {
+					$data = BB::extend($data, $url);
 					$url = null;
 				}
 				if (!empty($url)) {
 					$options['url'] = $url;
 				}
-				$options = BB::extend($options, BB::set($data, 'title'));
+				$options = BB::extend($options, $data);
 			}
 		}
 		
