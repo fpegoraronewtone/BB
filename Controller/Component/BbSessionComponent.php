@@ -187,12 +187,43 @@ class BbSessionComponent extends SessionComponent {
 		header('Content-type: application/json');
 		
 		
-		echo json_encode(array(
-			'ajax' => BB::clear($options, 'url')
-		));
+		echo json_encode(BB::clear(array(
+			'ajax' => BB::clear($options, 'url'),
+			'formErrors' => BB::clear($this->ajaxErrors())
+		)));
 		exit;
 	}
 	
+	
+	/**	
+	* Pack all validation errors into one object to be sent via JSON.
+	* This object contains 2 sub-objects: "models" and "fields"
+	* 
+	* models: will contain errors with a CakePHP model/errors[] notation.
+	* fields: will contain an array of fieldID generated with a standard CakePHP naming rule.
+	*         each field will contain error description
+	*/
+	public function ajaxErrors() {
+		$errors = array('models' => array(), 'fields' => array());
+		foreach ($this->_Controller->uses as $modelName) {
+			
+			// handle models from plugins with dotted notation.
+			if (strpos($modelName,'.') !== false) list( $plugin, $modelName ) = explode('.',$modelName);
+			
+			// skip a model with no errors.
+			if (empty($this->_Controller->{$modelName}->validationErrors)) continue;
+			
+			// add model's errors info to an object
+			$errors['models'][$modelName] = $this->_Controller->{$modelName}->validationErrors;
+			
+			// Calculate each error's field ID. Fastest client usage!
+			foreach ($this->_Controller->{$modelName}->validationErrors as $fieldName=>$msgs) {
+				$errors['fields'][$modelName.Inflector::camelize($fieldName)] = $msgs[0];
+			}
+			
+		}
+		return $errors;
+	}
 	
 	
 	
