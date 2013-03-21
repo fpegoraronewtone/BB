@@ -12,10 +12,10 @@ class BBMenu {
 	
 	protected static $_bbKey = 'BbMenu';
 	protected static $_defaults = array(
-		'show' => '',
-		'url' => '',
-		'params' => '',
-		'active' => false
+		'show'		=> '',
+		'href'		=> '',
+		'params'	=> '',
+		'active'	=> false
 	);
 	
 	
@@ -25,7 +25,7 @@ class BBMenu {
  * 
  * @var string
  */
-	public static $displayModel 		= 'BbMenu';
+	public static $displayModel = 'BbMenu';
 
 	
 /**
@@ -33,7 +33,7 @@ class BBMenu {
  * Used to store item's childrenhood data and to output it by the "tree()" method.
  * @var unknown_type
  */
-	public static $children		= 'children';
+	public static $children	= 'children';
 	
 	
 	
@@ -79,7 +79,7 @@ class BBMenu {
 		if (!is_array($data)) {
 			$data = array(
 				'show' => $name,
-				'url' => $data
+				'href' => $data
 			);
 		}
 		foreach($old as $key=>$val) {
@@ -239,7 +239,7 @@ class BBMenu {
 					if (!is_array($val)) {
 						$val = array(
 							'show' => $key,
-							'url' => $val
+							'href' => $val
 						);
 					}
 					$data[$key] = self::_make($val);
@@ -250,7 +250,7 @@ class BBMenu {
 			if (!is_array($data)) {
 				$data = array(
 					'show' => $name,
-					'url' => $data
+					'href' => $data
 				);
 			}
 			return array($name => self::_make($data));
