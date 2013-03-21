@@ -8,7 +8,7 @@
  */
 
 
-class BbMenu {
+class BBMenu {
 	
 	protected static $_bbKey = 'BbMenu';
 	protected static $_defaults = array(

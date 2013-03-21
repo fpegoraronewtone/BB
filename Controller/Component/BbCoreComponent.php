@@ -41,35 +41,48 @@ class BbCoreComponent extends Component {
 	 * - $_SESSION
 	 * - $_COOKIE
 	 */
-	public function getParam($name = '', $default = null) {
-		if (empty($name)) return $name;
-		if (isset($this->_Controller->request->params[$name])) {
-			return $this->_Controller->request->params[$name];
+	public function pval($key = '', $default = null) {
+		
+		// empty key return false
+		if (empty($key)) false;
+		$val = '';
+		
+		if (isset($this->_Controller->request->data) && Hash::check($this->_Controller->request->data, $key)) {
+			$val = Hash::extract($this->_Controller->request->data, $key);
+		
+		} elseif (isset($this->_Controller->request->params) && Hash::check($this->_Controller->request->params, $key)) {
+			$val = Hash::extract($this->_Controller->request->params, $key);
+		
+		} elseif (isset($this->_Controller->request->params['named']) && Hash::check($this->_Controller->request->params['named'], $key)) {
+			$val = Hash::extract($this->_Controller->request->params['named'], $key);
+		
+		} elseif (BB::check($key)) {
+			$val = BB::read($key);
+		
+		// CakePHP session
+		} elseif (CakeSession::check($key)) {
+			$val = CakeSession::read($key);
+		
+		} elseif (isset($_POST) && Hash::check($_POST, $key)) {
+			$val = Hash::extract($_POST, $key);
+		
+		} elseif (isset($_GET) && Hash::check($_GET, $key)) {
+			$val = Hash::extract($_GET, $key);
+		
+		// generic PHP session
+		} elseif (isset($_SESSION) && Hash::check($_SESSION, $key)) {
+			$val = Hash::extract($_SESSION, $key);
+		
+		} elseif (isset($_COOKIE) && Hash::check($_COOKIE, $key)) {
+			$val = Hash::extract($_COOKIE, $key);
+		
 		}
-		if (isset($this->_Controller->request->params['named'][$name])) {
-			return $this->_Controller->request->params['named'][$name];
+		
+		if (empty($val) && $default !== null) {
+			return $default;
+		} else {
+			return $val;
 		}
-		if (isset($this->_Controller->request->data[$name])) {
-			return $this->_Controller->request->data[$name];
-		}
-		if (isset($_POST[$name])) {
-			return $_POST[$name];
-		}
-		if (isset($_GET[$name])) {
-			return $_GET[$name];
-		}
-		/*
-		if ($this->_Controller->Session->Check($name)) {
-			return $this->_Controller->Session->Read($name);
-		}
-		*/
-		if (isset($_SESSION[$name])) {
-			return $_SESSION[$name];
-		}
-		if (isset($_COOKIE[$name])) {
-			return $_COOKIE[$name];
-		}
-		return $default;
 	}
 	
 	

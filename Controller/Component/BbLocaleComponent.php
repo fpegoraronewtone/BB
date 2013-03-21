@@ -48,8 +48,8 @@ class BbLocaleComponent extends Component {
 	 */
 	protected function _checkLocale() {
 		
-		$this->country = $this->BbCore->getParam('country');
-		$this->language = $this->BbCore->getParam('language');
+		$this->country = $this->BbCore->pval('country');
+		$this->language = $this->BbCore->pval('language');
 		
 		if (empty($this->country)) {
 			$this->country = $this->_getCountry();
